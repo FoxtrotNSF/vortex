@@ -98,4 +98,4 @@ $(DESTDIR)/$(PROJECT): $(SRCS) vortex_afu.h
 	verilator --build $(VL_FLAGS) $(SRCS) -CFLAGS '$(CXXFLAGS)' -LDFLAGS '$(LDFLAGS)' -o ../$(DESTDIR)/$(PROJECT)
 
 clean:
-	rm -rf obj_dir $(DESTDIR)/$(PROJECT)
+	rm -rf obj_dir $(DESTDIR)/$(PROJECT) vortex_afu.h
