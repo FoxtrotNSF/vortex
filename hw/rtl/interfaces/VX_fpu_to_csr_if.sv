@@ -2,6 +2,7 @@
 `define VX_FPU_TO_CSR_IF
 
 `include "VX_define.vh"
+`include "VX_fpu_types.vh"
 
 interface VX_fpu_to_csr_if ();
 

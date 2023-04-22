@@ -34,7 +34,7 @@
 
 `define PERF_CTR_BITS   44
 
-`define UUID_BITS       44
+`define UUID_BITS       16
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -409,8 +409,5 @@
 `define TO_FULL_ADDR(x)         {x, (32-$bits(x))'(0)}
 
 ///////////////////////////////////////////////////////////////////////////////
-
-`include "VX_fpu_types.vh"
-`include "VX_gpu_types.vh"
 
 `endif

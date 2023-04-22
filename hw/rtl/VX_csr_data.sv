@@ -1,4 +1,4 @@
-`include "VX_define.vh"
+`include "VX_fpu_types.vh"
 
 module VX_csr_data #(
     parameter CORE_ID = 0
@@ -49,8 +49,8 @@ module VX_csr_data #(
     reg [`CSR_WIDTH-1:0] csr_mepc;    
     reg [`CSR_WIDTH-1:0] csr_pmpcfg [0:0];
     reg [`CSR_WIDTH-1:0] csr_pmpaddr [0:0];
-    reg [63:0] csr_cycle;
-    reg [63:0] csr_instret;
+    reg [63:0] csr_cycle /* verilator public */;
+    reg [63:0] csr_instret /* verilator public */;
     
     reg [`NUM_WARPS-1:0][`INST_FRM_BITS+`FFLAGS_BITS-1:0] fcsr;
 
