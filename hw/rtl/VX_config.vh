@@ -1,6 +1,9 @@
 `ifndef VX_CONFIG
 `define VX_CONFIG
 
+`define XILINX
+`define SYNTHESIS
+
 `ifndef XLEN
 `define XLEN 32
 `endif
