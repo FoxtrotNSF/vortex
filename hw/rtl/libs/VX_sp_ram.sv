@@ -5,7 +5,6 @@ module VX_sp_ram #(
     parameter DATAW       = 1,
     parameter SIZE        = 1,
     parameter BYTEENW     = 1,
-    parameter OUT_REG     = 0,
     parameter NO_RWCHECK  = 0,
     parameter LUTRAM      = 0,
     parameter ADDRW       = $clog2(SIZE),
@@ -14,6 +13,7 @@ module VX_sp_ram #(
     parameter [DATAW-1:0] INIT_VALUE = 0
 ) (  
     input wire               clk,
+    input wire               en,
     input wire [ADDRW-1:0]   addr,
     input wire [BYTEENW-1:0] wren,
     input wire [DATAW-1:0]   wdata,
@@ -33,220 +33,80 @@ module VX_sp_ram #(
         end                                       \
     end
 
-`ifdef SYNTHESIS
-    if (LUTRAM) begin
-        if (OUT_REG) begin        
-            reg [DATAW-1:0] rdata_r;
-
+    generate
+        reg [DATAW-1:0] rdata_r;
+        if (LUTRAM) begin
+            `USE_FAST_BRAM reg [DATAW-1:0] ram [SIZE-1:0];
+            `RAM_INITIALIZATION
             if (BYTEENW > 1) begin
-                `USE_FAST_BRAM reg [BYTEENW-1:0][7:0] ram [SIZE-1:0];
-
-                `RAM_INITIALIZATION
-
-                always @(posedge clk) begin
-                    for (integer i = 0; i < BYTEENW; i++) begin
-                        if (wren[i])
-                            ram[addr][i] <= wdata[i * 8 +: 8];
+                for (genvar i = 0; i < BYTEENW; i = i+1) begin
+                    always @(posedge clk) begin
+                        if(en && wren[i])
+                            ram[addr][(i+1)*8-1:i*8] <= wdata[(i+1)*8-1:i*8];
                     end
-                    rdata_r <= ram[addr];
                 end
             end else begin
-                `USE_FAST_BRAM reg [DATAW-1:0] ram [SIZE-1:0];
-
-                `RAM_INITIALIZATION
-
                 always @(posedge clk) begin
-                    if (wren)
+                    if (en && wren)
                         ram[addr] <= wdata;
-                    rdata_r <= ram[addr];
                 end
             end
-            assign rdata = rdata_r;
-        end else begin
-            if (BYTEENW > 1) begin
-                `USE_FAST_BRAM reg [BYTEENW-1:0][7:0] ram [SIZE-1:0];
-
-               `RAM_INITIALIZATION
-
-                always @(posedge clk) begin
-                    for (integer i = 0; i < BYTEENW; i++) begin
-                        if (wren[i])
-                            ram[addr][i] <= wdata[i * 8 +: 8];
-                    end
-                end
-                assign rdata = ram[addr];
-            end else begin
-                `USE_FAST_BRAM reg [DATAW-1:0] ram [SIZE-1:0];
-
-                `RAM_INITIALIZATION
-
-                always @(posedge clk) begin
-                    if (wren)
-                        ram[addr] <= wdata;
-                end
-                assign rdata = ram[addr];
-            end         
-        end
-    end else begin
-        if (OUT_REG) begin
-            reg [DATAW-1:0] rdata_r;
-
-            if (BYTEENW > 1) begin
-                reg [BYTEENW-1:0][7:0] ram [SIZE-1:0];
-
-                `RAM_INITIALIZATION
-
-                always @(posedge clk) begin
-                    for (integer i = 0; i < BYTEENW; i++) begin
-                        if (wren[i])
-                            ram[addr][i] <= wdata[i * 8 +: 8];
-                    end
+            always @ (posedge clk) begin
+                if (en)
                     rdata_r <= ram[addr];
+            end
+        end else begin
+            if (NO_RWCHECK) begin
+                `NO_RW_RAM_CHECK reg [DATAW-1:0] ram [SIZE-1:0];
+                `RAM_INITIALIZATION
+                if (BYTEENW > 1) begin
+                    for (genvar i = 0; i < BYTEENW; i = i+1) begin
+                        always @(posedge clk) begin
+                            if (en && wren[i])
+                                 ram[addr][(i+1)*8-1:i*8] <= wdata[(i+1)*8-1:i*8];
+                        end
+                    end
+                end else begin
+                    always @(posedge clk) begin
+                        if (en && wren)
+                            ram[addr] <= wdata;
+                    end
+                end
+                always @ (posedge clk) begin
+                    if (en)
+                        rdata_r <= ram[addr];
                 end
             end else begin
                 reg [DATAW-1:0] ram [SIZE-1:0];
-
-               `RAM_INITIALIZATION
-
-                always @(posedge clk) begin
-                    if (wren)
-                        ram[addr] <= wdata;
-                    rdata_r <= ram[addr];
-                end
-            end
-            assign rdata = rdata_r;
-        end else begin
-            if (NO_RWCHECK) begin
+                `RAM_INITIALIZATION
                 if (BYTEENW > 1) begin
-                    `NO_RW_RAM_CHECK reg [BYTEENW-1:0][7:0] ram [SIZE-1:0];
-
-                    `RAM_INITIALIZATION
-
-                    always @(posedge clk) begin
-                        for (integer i = 0; i < BYTEENW; i++) begin
-                            if (wren[i])
-                                ram[addr][i] <= wdata[i * 8 +: 8];
+                    for (genvar i = 0; i < BYTEENW; i = i+1) begin
+                        always @(posedge clk) begin
+                            if(en) begin
+                                if (wren[i]) begin
+                                    ram[addr][(i+1)*8-1:i*8] <= wdata[(i+1)*8-1:i*8];
+                                    rdata_r[(i+1)*8-1:i*8]  <= wdata[(i+1)*8-1:i*8];
+                                end else begin
+                                    rdata_r[i*8 +: 8]  <= ram[addr][(i+1)*8-1:i*8] ;
+                                end
+                            end
                         end
                     end
-                    assign rdata = ram[addr];
                 end else begin
-                    `NO_RW_RAM_CHECK reg [DATAW-1:0] ram [SIZE-1:0];
-
-                    `RAM_INITIALIZATION
-
                     always @(posedge clk) begin
-                        if (wren)
-                            ram[addr] <= wdata;
-                    end
-                    assign rdata = ram[addr];
-                end
-            end else begin
-                if (BYTEENW > 1) begin
-                    reg [BYTEENW-1:0][7:0] ram [SIZE-1:0];
-
-                    `RAM_INITIALIZATION
-
-                    always @(posedge clk) begin                        
-                        for (integer i = 0; i < BYTEENW; i++) begin
-                            if (wren[i])
-                                ram[addr][i] <= wdata[i * 8 +: 8];
+                        if(en) begin
+                            if (wren) begin
+                                ram[addr] <= wdata;
+                                rdata_r <= wdata;
+                            end else
+                                rdata_r <= ram[addr];
                         end
                     end
-                    assign rdata = ram[addr];
-                end else begin
-                    reg [DATAW-1:0] ram [SIZE-1:0];
-
-                    `RAM_INITIALIZATION  
-
-                    always @(posedge clk) begin
-                        if (wren)
-                            ram[addr] <= wdata;
-                    end
-                    assign rdata = ram[addr];
-                end                
-            end
-        end
-    end
-`else
-    if (OUT_REG) begin
-        reg [DATAW-1:0] rdata_r;
-        if (BYTEENW > 1) begin
-            reg [BYTEENW-1:0][7:0] ram [SIZE-1:0];
-
-            `RAM_INITIALIZATION
-
-            always @(posedge clk) begin
-                for (integer i = 0; i < BYTEENW; i++) begin
-                    if (wren[i])
-                        ram[addr][i] <= wdata[i * 8 +: 8];
                 end
-                rdata_r <= ram[addr];
-            end
-        end else begin
-            reg [DATAW-1:0] ram [SIZE-1:0];
-
-            `RAM_INITIALIZATION
-
-            always @(posedge clk) begin
-                if (wren)
-                    ram[addr] <= wdata;
-                rdata_r <= ram[addr];
             end
         end
         assign rdata = rdata_r;
-    end else begin
-        if (BYTEENW > 1) begin
-            reg [BYTEENW-1:0][7:0] ram [SIZE-1:0];
-            reg [DATAW-1:0] prev_data;
-            reg [ADDRW-1:0] prev_addr;
-            reg prev_write;
-
-            `RAM_INITIALIZATION
-
-            always @(posedge clk) begin
-                for (integer i = 0; i < BYTEENW; i++) begin
-                    if (wren[i])
-                        ram[addr][i] <= wdata[i * 8 +: 8];
-                end
-                prev_write <= (| wren);
-                prev_data  <= ram[addr];
-                prev_addr  <= addr;
-            end
-            
-            if (LUTRAM || !NO_RWCHECK) begin
-                `UNUSED_VAR (prev_write)
-                `UNUSED_VAR (prev_data)
-                `UNUSED_VAR (prev_addr)
-                assign rdata = ram[addr];
-            end else begin
-                assign rdata = (prev_write && (prev_addr == addr)) ? prev_data : ram[addr];
-            end
-        end else begin
-            reg [DATAW-1:0] ram [SIZE-1:0];
-            reg [DATAW-1:0] prev_data;
-            reg [ADDRW-1:0] prev_addr;
-            reg prev_write;
-
-            `RAM_INITIALIZATION  
-
-            always @(posedge clk) begin
-                if (wren)
-                    ram[addr] <= wdata;
-                prev_write <= wren;
-                prev_data  <= ram[addr];
-                prev_addr  <= addr;
-            end
-            if (LUTRAM || !NO_RWCHECK) begin
-                `UNUSED_VAR (prev_write)
-                `UNUSED_VAR (prev_data)
-                `UNUSED_VAR (prev_addr)
-                assign rdata = ram[addr];
-            end else begin
-                assign rdata = (prev_write && (prev_addr == addr)) ? prev_data : ram[addr];
-            end
-        end
-    end
-`endif    
+    endgenerate
 
 endmodule
 `TRACING_ON
