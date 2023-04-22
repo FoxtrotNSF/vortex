@@ -311,7 +311,7 @@ private:
         device_->m_axi_rid    = mem_req->tag;   
         device_->m_axi_rresp  = 0;
         device_->m_axi_rlast  = 1;
-        memcpy((uint8_t*)device_->m_axi_rdata, mem_req->block.data(), MEM_BLOCK_SIZE);
+        memcpy((uint8_t*)device_->m_axi_rdata.data(), mem_req->block.data(), MEM_BLOCK_SIZE);
         pending_mem_reqs_.erase(mem_rsp_it);
         mem_rd_rsp_active_ = true;
         delete mem_req;
@@ -353,11 +353,11 @@ private:
       if (device_->m_axi_wvalid) {        
         uint64_t byteen = device_->m_axi_wstrb;
         unsigned base_addr = device_->m_axi_awaddr;
-        uint8_t* data = (uint8_t*)(device_->m_axi_wdata);
+        uint8_t* data = (uint8_t*)(device_->m_axi_wdata.data());
 
         // check console output
         if (base_addr >= IO_COUT_ADDR 
-         && base_addr < (IO_COUT_ADDR + IO_COUT_SIZE)) {          
+         && base_addr <= (IO_COUT_ADDR + (IO_COUT_SIZE-1))) {
           for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
             if ((byteen >> i) & 0x1) {            
               auto& ss_buf = print_bufs_[i];
@@ -462,7 +462,7 @@ private:
           }
           printf("\n");
         */
-        memcpy((uint8_t*)device_->mem_rsp_data, mem_req->block.data(), MEM_BLOCK_SIZE);
+        memcpy((uint8_t*)device_->mem_rsp_data.data(), mem_req->block.data(), MEM_BLOCK_SIZE);
         device_->mem_rsp_tag = mem_req->tag;   
         pending_mem_reqs_.erase(mem_rsp_it);
         mem_rd_rsp_active_ = true;
@@ -478,7 +478,7 @@ private:
       if (device_->mem_req_rw) {        
         // process writes
         uint64_t byteen = device_->mem_req_byteen;        
-        uint8_t* data = (uint8_t*)(device_->mem_req_data);
+        uint8_t* data = (uint8_t*)(device_->mem_req_data.data());
 
         // check console output
         if (byte_addr >= IO_COUT_ADDR 
