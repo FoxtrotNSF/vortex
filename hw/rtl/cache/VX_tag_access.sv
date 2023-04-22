@@ -33,7 +33,6 @@ module VX_tag_access #(
 
     `UNUSED_PARAM (CACHE_ID)
     `UNUSED_PARAM (BANK_ID)
-    `UNUSED_VAR (reset)
     `UNUSED_VAR (lookup)
 
     wire [`TAG_SELECT_BITS-1:0] read_tag;
@@ -41,24 +40,27 @@ module VX_tag_access #(
     
     wire [`LINE_SELECT_BITS-1:0] line_addr = addr[`LINE_SELECT_BITS-1:0];
     wire [`TAG_SELECT_BITS-1:0] line_tag = `LINE_TAG_ADDR(addr);
+    reg [`TAG_SELECT_BITS-1:0] line_tag_1;
 
     VX_sp_ram #(
         .DATAW      (`TAG_SELECT_BITS + 1),
         .SIZE       (`LINES_PER_BANK),
         .NO_RWCHECK (1)
     ) tag_store (
-        .clk(  clk),                 
+        .clk   (clk),
+        .en    (!(stall || reset)),
         .addr  (line_addr),   
         .wren  (fill || flush),
         .wdata ({!flush, line_tag}),
         .rdata ({read_valid, read_tag})
     );
 
-    assign tag_match = read_valid && (line_tag == read_tag);
+    always_ff @(posedge clk) line_tag_1 <= line_tag;
 
-    `UNUSED_VAR (stall)
-    
+    assign tag_match = read_valid && (line_tag_1 == read_tag);
+
 `ifdef DBG_TRACE_CACHE_TAG
+    wire tag_match_dbg = read_valid && (line_tag == read_tag);
     always @(posedge clk) begin
         if (fill && ~stall) begin
             dpi_trace("%d: cache%0d:%0d tag-fill: addr=%0h, blk_addr=%0d, tag_id=%0h\n", $time, CACHE_ID, BANK_ID, `LINE_TO_BYTE_ADDR(addr, BANK_ID), line_addr, line_tag);
@@ -67,7 +69,7 @@ module VX_tag_access #(
             dpi_trace("%d: cache%0d:%0d tag-flush: addr=%0h, blk_addr=%0d\n", $time, CACHE_ID, BANK_ID, `LINE_TO_BYTE_ADDR(addr, BANK_ID), line_addr);
         end
         if (lookup && ~stall) begin                
-            if (tag_match) begin
+            if (tag_match_dbg) begin
                 dpi_trace("%d: cache%0d:%0d tag-hit: addr=%0h, blk_addr=%0d, tag_id=%0h (#%0d)\n", $time, CACHE_ID, BANK_ID, `LINE_TO_BYTE_ADDR(addr, BANK_ID), line_addr, line_tag, req_id);
             end else begin
                 dpi_trace("%d: cache%0d:%0d tag-miss: addr=%0h, blk_addr=%0d, tag_id=%0h, old_tag_id=%0h (#%0d)\n", $time, CACHE_ID, BANK_ID, `LINE_TO_BYTE_ADDR(addr, BANK_ID), line_addr, line_tag, read_tag, req_id);
