@@ -53,7 +53,7 @@ VL_FLAGS += $(CONFIGS)
 CXXFLAGS += $(CONFIGS)
 
 # Enable Verilator multithreaded simulation
-THREADS ?= $(shell python -c 'import multiprocessing as mp; print(mp.cpu_count())')
+THREADS ?= $(shell python3 -c 'import multiprocessing as mp; print(mp.cpu_count())')
 VL_FLAGS += -j $(THREADS)
 #VL_FLAGS += --threads $(THREADS)
 
