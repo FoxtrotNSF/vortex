@@ -2,6 +2,7 @@
 `define VX_WARP_CTL_IF
 
 `include "VX_define.vh"
+`include "VX_gpu_types.vh"
 
 interface VX_warp_ctl_if ();
 

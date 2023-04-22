@@ -1,4 +1,4 @@
-`include "VX_define.vh"
+`include "VX_gpu_types.vh"
 
 module VX_gpu_unit #(
     parameter CORE_ID = 0
