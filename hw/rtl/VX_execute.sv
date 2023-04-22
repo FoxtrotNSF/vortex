@@ -229,6 +229,12 @@ module VX_execute #(
 
     // special workaround to get RISC-V tests Pass/Fail status
     wire ebreak /* verilator public */;
+    wire [31:0] pc /* verilator public */;
+    wire [`NW_BITS-1:0] wid/* verilator public */;
+    wire [`NUM_THREADS-1:0] tmask/* verilator public */;
+    assign wid = alu_req_if.wid;
+    assign pc = (alu_req_if.valid && alu_req_if.ready) ? alu_req_if.PC : 32'b0;
+    assign tmask = alu_req_if.tmask;
     assign ebreak = alu_req_if.valid && alu_req_if.ready
                  && `INST_ALU_IS_BR(alu_req_if.op_mod)
                  && (`INST_BR_BITS'(alu_req_if.op_type) == `INST_BR_EBREAK 

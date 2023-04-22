@@ -65,4 +65,12 @@ module VX_fetch #(
         .ifetch_rsp_if  (ifetch_rsp_if)   
     );
 
+`ifdef DBG_TRACE_CORE_PIPELINE
+    always @(posedge clk) begin
+        if (ifetch_req_if.valid && ifetch_req_if.ready) begin
+            dpi_trace("%d: core%0d-fetch: wid=%0d, PC=%0h\n", $time, CORE_ID, ifetch_req_if.wid, ifetch_req_if.PC);
+        end
+    end
+`endif
+
 endmodule

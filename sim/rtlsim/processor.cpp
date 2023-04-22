@@ -558,6 +558,44 @@ private:
   #endif
   }
 
+    uint64_t get_clocks() {
+#ifdef AXI_BUS
+        return device_->Vortex_axi->vortex->vlSymsp->TOP__Vortex_axi__vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute__csr_unit__csr_data.csr_cycle;
+#else
+        return device_->Vortex->vlSymsp->TOP__Vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute__csr_unit__csr_data.csr_cycle;
+#endif
+    }
+
+    uint64_t get_instrs() {
+#ifdef AXI_BUS
+        return device_->Vortex_axi->vortex->vlSymsp->TOP__Vortex_axi__vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute__csr_unit__csr_data.csr_instret;
+#else
+        return device_->Vortex->vlSymsp->TOP__Vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute__csr_unit__csr_data.csr_instret;
+#endif
+    }
+
+    uint32_t get_wid() const {
+#ifdef AXI_BUS
+        return (uint32_t)device_->Vortex_axi->vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->wid;
+#else
+        return (uint32_t)device_->Vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->wid;
+#endif
+    }
+    uint32_t get_tmask() const {
+#ifdef AXI_BUS
+        return (uint32_t)device_->Vortex_axi->vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->tmask;
+#else
+        return (uint32_t)device_->Vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->tmask;
+#endif
+    }
+    uint32_t get_pc() const {
+    #ifdef AXI_BUS
+        return (uint32_t)device_->Vortex_axi->vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->pc;
+    #else
+        return (uint32_t)device_->Vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->pc;
+    #endif
+    }
+
   int get_last_wb_value(int reg) const {
   #ifdef AXI_BUS
     return (int)device_->Vortex_axi->vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->commit->writeback->last_wb_value[reg];
