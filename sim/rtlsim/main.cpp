@@ -18,14 +18,18 @@ static void show_usage() {
 
 bool riscv_test = false;
 std::vector<const char*> programs;
+std::vector<uint32_t> brp_addrs;
 
 static void parse_args(int argc, char **argv) {
   	int c;
-  	while ((c = getopt(argc, argv, "rh?")) != -1) {
+  	while ((c = getopt(argc, argv, "b:rh?")) != -1) {
     	switch (c) {
 		case 'r':
 			riscv_test = true;
 			break;
+        case 'b':
+            brp_addrs.push_back(std::stoul(optarg, nullptr, 0));
+            break;
     	case 'h':
     	case '?':
       		show_usage();
@@ -66,7 +70,7 @@ int main(int argc, char **argv) {
 			return -1;
 		}
 
-		exitcode = processor.run();
+		exitcode = processor.run(brp_addrs);
 		
 		if (riscv_test) {
 			if (1 == exitcode) {
