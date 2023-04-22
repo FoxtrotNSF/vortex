@@ -571,17 +571,17 @@ private:
 
     uint64_t get_clocks() {
 #ifdef AXI_BUS
-        return device_->Vortex_axi->vortex->vlSymsp->TOP__Vortex_axi__vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute__csr_unit__csr_data.csr_cycle;
+        return device_->Vortex_axi->vortex->vlSymsp->TOP__Vortex_axi__vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute.__PVT__csr_unit__DOT__csr_data__DOT__csr_cycle;
 #else
-        return device_->Vortex->vlSymsp->TOP__Vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute__csr_unit__csr_data.csr_cycle;
+        return device_->Vortex->vlSymsp->TOP__Vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute.__PVT__csr_unit__DOT__csr_data__DOT__csr_cycle;
 #endif
     }
 
     uint64_t get_instrs() {
 #ifdef AXI_BUS
-        return device_->Vortex_axi->vortex->vlSymsp->TOP__Vortex_axi__vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute__csr_unit__csr_data.csr_instret;
+        return device_->Vortex_axi->vortex->vlSymsp->TOP__Vortex_axi__vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute.__PVT__csr_unit__DOT__csr_data__DOT__csr_instret;
 #else
-        return device_->Vortex->vlSymsp->TOP__Vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute__csr_unit__csr_data.csr_instret;
+        return device_->Vortex->vlSymsp->TOP__Vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute.__PVT__csr_unit__DOT__csr_data__DOT__csr_instret;
 #endif
     }
 
