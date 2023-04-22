@@ -24,6 +24,7 @@
 #include <list>
 #include <queue>
 #include <vector>
+#include <string>
 #include <sstream> 
 #include <unordered_map>
 
@@ -158,8 +159,10 @@ public:
     ram_ = ram;
   }
 
-  int run() {
+  int run(std::vector<uint32_t> brp_addrs) {
     int exitcode = 0;
+    //uint64_t instrs = 0;
+    uint64_t clocks = 0;
 
   #ifndef NDEBUG
     std::cout << std::dec << timestamp << ": [sim] run()" << std::endl;
@@ -173,6 +176,14 @@ public:
       if (get_ebreak()) {
         exitcode = get_last_wb_value(3);
         break;  
+      }
+      if(std::find(brp_addrs.begin(), brp_addrs.end(), get_pc()) != brp_addrs.end()){
+          auto tmask = get_tmask();
+          std::cout << "Execute : warp " << get_wid() << " (";
+          for (unsigned int i = 0; i < NUM_THREADS; i++) std::cout << (((1 << i) & tmask) ? 1 : 0);
+          std::cout << ") : break at " << std::hex << get_pc() << " after " << std::dec;
+          std::cout << (get_clocks() - clocks) << " clocks" << std::endl;
+          clocks = get_clocks();
       }
       this->tick();
     }
@@ -654,6 +665,6 @@ void Processor::attach_ram(RAM* mem) {
   impl_->attach_ram(mem);
 }
 
-int Processor::run() {
-  return impl_->run();
+int Processor::run(std::vector<uint32_t> brp_addrs) {
+  return impl_->run(brp_addrs);
 }
