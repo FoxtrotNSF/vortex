@@ -177,9 +177,11 @@ module VX_shared_mem #(
             .DATAW      (`WORD_WIDTH),
             .SIZE       (`LINES_PER_BANK),
             .BYTEENW    (WORD_SIZE),
+            .OUT_REG    (0),
             .NO_RWCHECK (1)
         ) data_store (
             .clk   (clk),
+            .en    (1'b1),
             .addr  (addr),
             .wren  (wren),
             .wdata (per_bank_core_req_data[i]),

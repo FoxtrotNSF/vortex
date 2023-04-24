@@ -45,6 +45,7 @@ module VX_tag_access #(
     VX_sp_ram #(
         .DATAW      (`TAG_SELECT_BITS + 1),
         .SIZE       (`LINES_PER_BANK),
+        .OUT_REG    (1),
         .NO_RWCHECK (1)
     ) tag_store (
         .clk   (clk),

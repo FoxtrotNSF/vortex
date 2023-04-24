@@ -97,6 +97,7 @@ module VX_data_access #(
         .DATAW      (`CACHE_LINE_WIDTH),
         .SIZE       (`LINES_PER_BANK),
         .BYTEENW    (BYTEENW),
+        .OUT_REG    (1),
         .NO_RWCHECK (1)
     ) data_store (
         .clk   (clk),
