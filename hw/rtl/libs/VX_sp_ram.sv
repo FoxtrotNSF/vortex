@@ -4,6 +4,7 @@
 module VX_sp_ram #(
     parameter DATAW       = 1,
     parameter SIZE        = 1,
+    parameter OUT_REG     = 0,
     parameter BYTEENW     = 1,
     parameter NO_RWCHECK  = 0,
     parameter LUTRAM      = 0,
@@ -51,9 +52,13 @@ module VX_sp_ram #(
                         ram[addr] <= wdata;
                 end
             end
-            always @ (posedge clk) begin
-                if (en)
-                    rdata_r <= ram[addr];
+            if(OUT_REG) begin
+                always @ (posedge clk) begin
+                    if (en)
+                        rdata_r <= ram[addr];
+                end
+            end else begin
+                assign rdata_r = ram[addr];
             end
         end else begin
             if (NO_RWCHECK) begin
@@ -72,9 +77,13 @@ module VX_sp_ram #(
                             ram[addr] <= wdata;
                     end
                 end
-                always @ (posedge clk) begin
-                    if (en)
-                        rdata_r <= ram[addr];
+                if(OUT_REG) begin
+                    always @ (posedge clk) begin
+                        if (en)
+                            rdata_r <= ram[addr];
+                    end
+                end else begin
+                    assign rdata_r = ram[addr];
                 end
             end else begin
                 reg [DATAW-1:0] ram [SIZE-1:0];
@@ -93,13 +102,21 @@ module VX_sp_ram #(
                         end
                     end
                 end else begin
-                    always @(posedge clk) begin
-                        if(en) begin
-                            if (wren) begin
+                    if(OUT_REG) begin
+                        always @(posedge clk) begin
+                            if(en) begin
+                                if (wren) begin
+                                    ram[addr] <= wdata;
+                                    rdata_r <= wdata;
+                                end else
+                                    rdata_r <= ram[addr];
+                            end
+                        end
+                    end else begin
+                        assign rdata_r = wren ? wdata : ram[addr];
+                        always @(posedge clk) begin
+                            if(en && wren)
                                 ram[addr] <= wdata;
-                                rdata_r <= wdata;
-                            end else
-                                rdata_r <= ram[addr];
                         end
                     end
                 end
