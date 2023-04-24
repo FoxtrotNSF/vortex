@@ -56,7 +56,7 @@ module VX_tag_access #(
         .rdata ({read_valid, read_tag})
     );
 
-    always_ff @(posedge clk) line_tag_1 <= line_tag;
+    always_ff @(posedge clk) if(!stall) line_tag_1 <= line_tag;
 
     assign tag_match = read_valid && (line_tag_1 == read_tag);
 

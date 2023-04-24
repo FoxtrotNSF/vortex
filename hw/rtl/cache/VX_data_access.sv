@@ -108,7 +108,7 @@ module VX_data_access #(
         .rdata (rdata)
     );
 
-    always_ff @(posedge clk) wsel_1 <= wsel;
+    always_ff @(posedge clk) if(!stall) wsel_1 <= wsel;
 
     if (`WORDS_PER_LINE > 1) begin
         for (genvar i = 0; i < NUM_PORTS; ++i) begin
