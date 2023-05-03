@@ -369,7 +369,7 @@ private:
         // check console output
         if (base_addr >= IO_COUT_ADDR 
          && base_addr <= (IO_COUT_ADDR + (IO_COUT_SIZE-1))) {
-          for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
+          for (int i = 0; i < IO_COUT_SIZE; i++) {
             if ((byteen >> i) & 0x1) {            
               auto& ss_buf = print_bufs_[i];
               char c = data[i];
@@ -493,7 +493,7 @@ private:
 
         // check console output
         if (byte_addr >= IO_COUT_ADDR 
-         && byte_addr < (IO_COUT_ADDR + IO_COUT_SIZE)) {          
+         && byte_addr < (IO_COUT_ADDR + (IO_COUT_SIZE-1))) {
           for (int i = 0; i < IO_COUT_SIZE; i++) {
             if ((byteen >> i) & 0x1) {            
               auto& ss_buf = print_bufs_[i];
