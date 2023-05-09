@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+#include <cstdint>
 namespace vortex {
 
 class RAM;
@@ -12,7 +14,7 @@ public:
 
   void attach_ram(RAM* ram);
 
-  int run();
+  int run(std::vector<uint32_t> brp_addrs = {});
 
 private:
 

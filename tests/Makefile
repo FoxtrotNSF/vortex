@@ -21,5 +21,6 @@ clean:
 	$(MAKE) clean -C opencl
 	$(MAKE) clean -C riscv
 	$(MAKE) clean -C unittest
+	$(MAKE) clean -C wcet
 
 .PHONY: all runtime regression opencl riscv unittest

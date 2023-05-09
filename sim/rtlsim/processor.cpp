@@ -24,7 +24,8 @@
 #include <list>
 #include <queue>
 #include <vector>
-#include <sstream> 
+#include <string>
+#include <sstream>
 #include <unordered_map>
 
 #define RAMULATOR
@@ -158,8 +159,10 @@ public:
     ram_ = ram;
   }
 
-  int run() {
+  int run(std::vector<uint32_t> brp_addrs) {
     int exitcode = 0;
+    //uint64_t instrs = 0;
+    uint64_t clocks = 0;
 
   #ifndef NDEBUG
     std::cout << std::dec << timestamp << ": [sim] run()" << std::endl;
@@ -173,6 +176,14 @@ public:
       if (get_ebreak()) {
         exitcode = get_last_wb_value(3);
         break;  
+      }
+      if(std::find(brp_addrs.begin(), brp_addrs.end(), get_pc()) != brp_addrs.end()){
+          auto tmask = get_tmask();
+          std::cout << "Execute : warp " << get_wid() << " (";
+          for (unsigned int i = 0; i < NUM_THREADS; i++) std::cout << (((1 << i) & tmask) ? 1 : 0);
+          std::cout << ") : break at " << std::hex << get_pc() << " after " << std::dec;
+          std::cout << (get_clocks() - clocks) << " clocks" << std::endl;
+          clocks = get_clocks();
       }
       this->tick();
     }
@@ -358,7 +369,7 @@ private:
         // check console output
         if (base_addr >= IO_COUT_ADDR 
          && base_addr <= (IO_COUT_ADDR + (IO_COUT_SIZE-1))) {
-          for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
+          for (int i = 0; i < IO_COUT_SIZE; i++) {
             if ((byteen >> i) & 0x1) {            
               auto& ss_buf = print_bufs_[i];
               char c = data[i];
@@ -482,7 +493,7 @@ private:
 
         // check console output
         if (byte_addr >= IO_COUT_ADDR 
-         && byte_addr < (IO_COUT_ADDR + IO_COUT_SIZE)) {          
+         && byte_addr < (IO_COUT_ADDR + (IO_COUT_SIZE-1))) {
           for (int i = 0; i < IO_COUT_SIZE; i++) {
             if ((byteen >> i) & 0x1) {            
               auto& ss_buf = print_bufs_[i];
@@ -558,6 +569,44 @@ private:
   #endif
   }
 
+    uint64_t get_clocks() {
+#ifdef AXI_BUS
+        return device_->Vortex_axi->vortex->vlSymsp->TOP__Vortex_axi__vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute.__PVT__csr_unit__DOT__csr_data__DOT__csr_cycle;
+#else
+        return device_->Vortex->vlSymsp->TOP__Vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute.__PVT__csr_unit__DOT__csr_data__DOT__csr_cycle;
+#endif
+    }
+
+    uint64_t get_instrs() {
+#ifdef AXI_BUS
+        return device_->Vortex_axi->vortex->vlSymsp->TOP__Vortex_axi__vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute.__PVT__csr_unit__DOT__csr_data__DOT__csr_instret;
+#else
+        return device_->Vortex->vlSymsp->TOP__Vortex__genblk2__BRA__0__KET____DOT__cluster__genblk2__BRA__0__KET____DOT__core__pipeline__execute.__PVT__csr_unit__DOT__csr_data__DOT__csr_instret;
+#endif
+    }
+
+    uint32_t get_wid() const {
+#ifdef AXI_BUS
+        return (uint32_t)device_->Vortex_axi->vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->wid;
+#else
+        return (uint32_t)device_->Vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->wid;
+#endif
+    }
+    uint32_t get_tmask() const {
+#ifdef AXI_BUS
+        return (uint32_t)device_->Vortex_axi->vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->tmask;
+#else
+        return (uint32_t)device_->Vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->tmask;
+#endif
+    }
+    uint32_t get_pc() const {
+    #ifdef AXI_BUS
+        return (uint32_t)device_->Vortex_axi->vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->pc;
+    #else
+        return (uint32_t)device_->Vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->execute->pc;
+    #endif
+    }
+
   int get_last_wb_value(int reg) const {
   #ifdef AXI_BUS
     return (int)device_->Vortex_axi->vortex->genblk2__BRA__0__KET____DOT__cluster->genblk2__BRA__0__KET____DOT__core->pipeline->commit->writeback->last_wb_value[reg];
@@ -616,6 +665,6 @@ void Processor::attach_ram(RAM* mem) {
   impl_->attach_ram(mem);
 }
 
-int Processor::run() {
-  return impl_->run();
+int Processor::run(std::vector<uint32_t> brp_addrs) {
+  return impl_->run(brp_addrs);
 }
