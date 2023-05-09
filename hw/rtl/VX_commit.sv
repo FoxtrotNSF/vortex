@@ -41,10 +41,49 @@ module VX_commit #(
                     || gpu_commit_fire;
 
 `ifdef EXT_F_ENABLE
+    wire [5:0][31:0]            commit_pcs;
+    wire [5:0]                  commit_valid;
+    wire [5:0][`NW_BITS-1:0]    commit_wid;
     wire [(6*`NUM_THREADS)-1:0] commit_tmask;
 `else
+    wire [4:0][31:0]            commit_pcs;
+    wire [4:0]                  commit_valid;
+    wire [4:0][`NW_BITS-1:0]    commit_wid;
     wire [(5*`NUM_THREADS)-1:0] commit_tmask;
 `endif
+
+     assign commit_pcs = {
+        alu_commit_if.PC,
+        ld_commit_if.PC,
+        st_commit_if.PC,
+        csr_commit_if.PC,
+    `ifdef EXT_F_ENABLE
+        fpu_commit_if.PC,
+    `endif
+        gpu_commit_if.PC
+    };
+
+    assign commit_valid = {
+       alu_commit_fire,
+       ld_commit_fire,
+       st_commit_fire,
+       csr_commit_fire,
+    `ifdef EXT_F_ENABLE
+       fpu_commit_fire,
+    `endif
+       gpu_commit_fire
+    };
+
+    assign commit_wid = {
+       alu_commit_if.wid,
+       ld_commit_if.wid,
+       st_commit_if.wid,
+       csr_commit_if.wid,
+    `ifdef EXT_F_ENABLE
+       fpu_commit_if.wid,
+    `endif
+       gpu_commit_if.wid
+    };
 
     wire [$clog2($bits(commit_tmask)+1)-1:0] commit_size;
 
@@ -89,6 +128,22 @@ module VX_commit #(
         .gpu_commit_if  (gpu_commit_if),
         .writeback_if   (writeback_if)
     );
+
+    always_ff @(posedge clk) begin
+        if(!cmt_to_csr_if.timeit_enable) cmt_to_csr_if.timeit_active <= '0;
+        else begin
+            for (integer i = 0; i < $bits(commit_valid); ++i) begin
+                for (integer w = 0; w < `NUM_WARPS; ++w) begin
+                    if(commit_valid[i] && (commit_wid[i] == `NW_BITS'(w))) begin
+                        if(commit_pcs[i] == cmt_to_csr_if.timeit_start_addr)
+                            cmt_to_csr_if.timeit_active[w] <= 1'b1;
+                        if(commit_pcs[i] == cmt_to_csr_if.timeit_end_addr)
+                            cmt_to_csr_if.timeit_active[w] <= 1'b0;
+                    end
+                end
+            end
+        end
+    end
 
     // store and gpu commits don't writeback  
     assign st_commit_if.ready  = 1'b1;
