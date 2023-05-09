@@ -216,6 +216,12 @@
 `define CSR_MPM_TEX_LAT             12'hB1C     // texture latency
 `define CSR_MPM_TEX_LAT_H           12'hB9C
 
+// PERF: timeit
+`define CSR_MPM_TIMEIT_CYCLES       12'hB1D     // counter for clks in timeit
+`define CSR_MPM_TIMEIT_CYCLES_H     12'hB9D
+`define CSR_MPM_TIMEIT_RANGE_L      12'hB1E     // start
+`define CSR_MPM_TIMEIT_RANGE_H      12'hB9E     // end
+
 // Machine Information Registers
 `define CSR_MVENDORID   12'hF11
 `define CSR_MARCHID     12'hF12
