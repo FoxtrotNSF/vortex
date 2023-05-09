@@ -17,16 +17,41 @@ update_compile_order -fileset [current_fileset]
 
 
 create_bd_design "fpga_design"
-create_bd_cell -type module -reference Vortex_axi Vortex_axi_0
-create_bd_cell -type ip -vlnv xilinx.com:ip:ddr4:2.2 ddr4_0
+create_bd_cell -type module -reference Vortex_axi vortex_gpu_axi
 
-set_property CONFIG.POLARITY ACTIVE_HIGH [get_bd_pins /Vortex_axi_0/reset]
-apply_bd_automation -rule xilinx.com:bd_rule:board -config { Board_Interface {ddr4_sdram ( DDR4 SDRAM ) } Manual_Source {Auto}}  [get_bd_intf_pins ddr4_0/C0_DDR4]
-apply_bd_automation -rule xilinx.com:bd_rule:board -config { Board_Interface {clk_300mhz ( Programmable Differential Clock (300MHz) ) } Manual_Source {Auto}}  [get_bd_intf_pins ddr4_0/C0_SYS_CLK]
-set_property CONFIG.ADDN_UI_CLKOUT1_FREQ_HZ {200} [get_bd_cells ddr4_0]
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {/ddr4_0/addn_ui_clkout1 (200 MHz)} Clk_slave {/ddr4_0/c0_ddr4_ui_clk (266 MHz)} Clk_xbar {Auto} Master {/Vortex_axi_0/m_axi} Slave {/ddr4_0/C0_DDR4_S_AXI} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins ddr4_0/C0_DDR4_S_AXI]
-apply_bd_automation -rule xilinx.com:bd_rule:board -config { Board_Interface {reset ( FPGA Reset ) } Manual_Source {New External Port (ACTIVE_HIGH)}}  [get_bd_pins ddr4_0/sys_rst]
-apply_bd_automation -rule xilinx.com:bd_rule:board -config { Board_Interface {reset ( FPGA Reset ) } Manual_Source {Auto}}  [get_bd_pins rst_ddr4_0_200M/ext_reset_in]
+create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.4 zynq_ps
+apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_preset "1" }  [get_bd_cells zynq_ps]
+set_property -dict [list \
+  CONFIG.PSU__CRL_APB__PL0_REF_CTRL__FREQMHZ {220} \
+  CONFIG.PSU__USE__M_AXI_GP0 {0} \
+  CONFIG.PSU__USE__M_AXI_GP1 {0} \
+  CONFIG.PSU__USE__S_AXI_GP2 {1} \
+  CONFIG.PSU__QSPI__PERIPHERAL__ENABLE {0} \
+] [get_bd_cells zynq_ps]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {/zynq_ps/pl_clk0 (214 MHz)} Clk_slave {Auto} Clk_xbar {Auto} Master {/vortex_gpu_axi/m_axi} Slave {/zynq_ps/S_AXI_HP0_FPD} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins zynq_ps/S_AXI_HP0_FPD]
+exclude_bd_addr_seg [get_bd_addr_segs zynq_ps/SAXIGP2/HP0_LPS_OCM] -target_address_space [get_bd_addr_spaces vortex_gpu_axi/m_axi]
+
+create_bd_cell -type ip -vlnv xilinx.com:ip:axi_uartlite:2.0 axi_uart
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {/zynq_ps/pl_clk0 (214 MHz)} Clk_slave {Auto} Clk_xbar {/zynq_ps/pl_clk0 (214 MHz)} Master {/vortex_gpu_axi/m_axi} Slave {/axi_uart/S_AXI} ddr_seg {Auto} intc_ip {/axi_smc} master_apm {0}}  [get_bd_intf_pins axi_uart/S_AXI]
+apply_bd_automation -rule xilinx.com:bd_rule:board -config { Board_Interface {uart2_pl ( UART ) } Manual_Source {Auto}}  [get_bd_intf_pins axi_uart/UART]
+set_property offset 0xFF000000 [get_bd_addr_segs {vortex_gpu_axi/m_axi/SEG_axi_uart_Reg}]
+set_property range 128 [get_bd_addr_segs {vortex_gpu_axi/m_axi/SEG_axi_uart_Reg}]
+
+create_bd_cell -type ip -vlnv xilinx.com:ip:axi_bram_ctrl:4.1 axi_bootrom
+set_property CONFIG.SINGLE_PORT_BRAM {1} [get_bd_cells axi_bootrom]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {/zynq_ps/pl_clk0 (214 MHz)} Clk_slave {Auto} Clk_xbar {/zynq_ps/pl_clk0 (214 MHz)} Master {/vortex_gpu_axi/m_axi} Slave {/axi_bootrom/S_AXI} ddr_seg {Auto} intc_ip {/axi_smc} master_apm {0}}  [get_bd_intf_pins axi_bootrom/S_AXI]
+set_property offset 0x80000000 [get_bd_addr_segs {vortex_gpu_axi/m_axi/SEG_axi_bootrom_Mem0}]
+
+
+create_bd_cell -type ip -vlnv xilinx.com:ip:blk_mem_gen:8.4 bootrom_data
+set_property -dict [list \
+  CONFIG.EN_SAFETY_CKT {false} \
+  CONFIG.EN_SLEEP_PIN {false} \
+  CONFIG.Load_Init_File {false} \
+  CONFIG.Memory_Type {Single_Port_ROM} \
+] [get_bd_cells bootrom_data]
+apply_bd_automation -rule xilinx.com:bd_rule:bram_cntlr -config {BRAM "Auto" }  [get_bd_intf_pins axi_bootrom/BRAM_PORTA]
+
 
 set design_file [get_property FILE_NAME [current_bd_design]]
 #set_property synth_checkpoint_mode Hierarchical [get_files $design_file]
