@@ -1,4 +1,4 @@
-`include "VX_fpu_types.vh"
+`include "VX_define.vh"
 
 module VX_csr_data #(
     parameter CORE_ID = 0
@@ -51,6 +51,9 @@ module VX_csr_data #(
     reg [`CSR_WIDTH-1:0] csr_pmpaddr [0:0];
     reg [63:0] csr_cycle /* verilator public */;
     reg [63:0] csr_instret /* verilator public */;
+    reg [`NW_BITS-1:0][63:0] csr_timeit_cycle;
+    reg [31:0] csr_timeit_start_addr;
+    reg [31:0] csr_timeit_end_addr;
     
     reg [`NUM_WARPS-1:0][`INST_FRM_BITS+`FFLAGS_BITS-1:0] fcsr;
 
@@ -78,6 +81,16 @@ module VX_csr_data #(
                     `CSR_MEPC:     csr_mepc       <= write_data[`CSR_WIDTH-1:0];
                     `CSR_PMPCFG0:  csr_pmpcfg[0]  <= write_data[`CSR_WIDTH-1:0];
                     `CSR_PMPADDR0: csr_pmpaddr[0] <= write_data[`CSR_WIDTH-1:0];
+                    `CSR_MPM_TIMEIT_RANGE_L : begin
+                        csr_timeit_start_addr <= write_data;
+                        cmt_to_csr_if.timeit_enable <= 1'b0;
+                    end
+                    `CSR_MPM_TIMEIT_RANGE_H : begin
+                        csr_timeit_end_addr <= write_data;
+                        if(!cmt_to_csr_if.timeit_enable)
+                            csr_timeit_cycle <= '0;
+                        cmt_to_csr_if.timeit_enable <= 1'b1;
+                    end
                     default: begin
                     `ifdef EXT_TEX_ENABLE
                         `ASSERT((write_addr == `CSR_TEX_UNIT)
@@ -104,7 +117,7 @@ module VX_csr_data #(
 `endif
 
     always @(posedge clk) begin
-       if (reset) begin
+        if (reset) begin
             csr_cycle   <= 0;
             csr_instret <= 0;
         end else begin
@@ -113,6 +126,10 @@ module VX_csr_data #(
             end
             if (cmt_to_csr_if.valid) begin
                 csr_instret <= csr_instret + 64'(cmt_to_csr_if.commit_size);
+            end
+            for (integer i = 0; i < `NUM_WARPS; ++i) begin
+                if (cmt_to_csr_if.timeit_enable)
+                    csr_timeit_cycle[i] <= csr_timeit_cycle[i] + 64'(cmt_to_csr_if.timeit_active[i]);
             end
         end
     end
@@ -146,7 +163,10 @@ module VX_csr_data #(
             `CSR_MCYCLE_H   : read_data_r = 32'(csr_cycle[`PERF_CTR_BITS-1:32]);
             `CSR_MINSTRET   : read_data_r = csr_instret[31:0];
             `CSR_MINSTRET_H : read_data_r = 32'(csr_instret[`PERF_CTR_BITS-1:32]);
-            
+
+            `CSR_MPM_TIMEIT_CYCLES : read_data_r = csr_timeit_cycle[read_wid][31:0];
+            `CSR_MPM_TIMEIT_CYCLES_H : read_data_r = 32'(csr_timeit_cycle[read_wid][63:32]);
+
         `ifdef PERF_ENABLE
             // PERF: pipeline
             `CSR_MPM_IBUF_ST    : read_data_r = perf_pipeline_if.ibf_stalls[31:0];
@@ -257,6 +277,8 @@ module VX_csr_data #(
     `RUNTIME_ASSERT(~read_enable || read_addr_valid_r, ("%t: *** invalid CSR read address: %0h (#%0d)", $time, read_addr, read_uuid))
 
     assign read_data = read_data_r;
+    assign cmt_to_csr_if.timeit_start_addr = csr_timeit_start_addr;
+    assign cmt_to_csr_if.timeit_end_addr   = csr_timeit_end_addr;
 
 `ifdef EXT_F_ENABLE    
     assign fpu_to_csr_if.read_frm = fcsr[fpu_to_csr_if.read_wid][`INST_FRM_BITS+`FFLAGS_BITS-1:`FFLAGS_BITS];
