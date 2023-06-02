@@ -284,6 +284,9 @@
 // Word size in bytes
 `define DCACHE_WORD_SIZE        4
 
+// Core request size bits
+`define CORE_MEM_REQ_SIZE_WIDTH ($clog2($clog2(`DCACHE_WORD_SIZE)+1))
+
 // Block size in bytes
 `define DCACHE_LINE_SIZE        `L1_BLOCK_SIZE
 
@@ -302,8 +305,8 @@
 // Memory request data bits
 `define DCACHE_MEM_DATA_WIDTH   (`DCACHE_LINE_SIZE * 8)
 
-// Memory request address bits
-`define DCACHE_MEM_ADDR_WIDTH   (32 - `CLOG2(`DCACHE_LINE_SIZE))
+// Memory request size bits
+`define DCACHE_MEM_REQ_SIZE_WIDTH ($clog2($clog2(`DCACHE_MEM_BYTEEN_WIDTH)+1))
 
 // Memory byte enable bits
 `define DCACHE_MEM_BYTEEN_WIDTH `DCACHE_LINE_SIZE
@@ -350,8 +353,8 @@
 // Memory request data bits
 `define L2_MEM_DATA_WIDTH        (`L2_CACHE_LINE_SIZE * 8)
 
-// Memory request address bits
-`define L2_MEM_ADDR_WIDTH        (32 - `CLOG2(`L2_CACHE_LINE_SIZE))
+// Memory request size bits
+`define L2_MEM_REQ_SIZE_WIDTH    ($clog2($clog2(`L2_MEM_BYTEEN_WIDTH)+1))
 
 // Memory byte enable bits
 `define L2_MEM_BYTEEN_WIDTH      `L2_CACHE_LINE_SIZE
@@ -382,8 +385,8 @@
 // Memory request data bits
 `define L3_MEM_DATA_WIDTH        (`L3_CACHE_LINE_SIZE * 8)
 
-// Memory request address bits
-`define L3_MEM_ADDR_WIDTH        (32 - `CLOG2(`L3_CACHE_LINE_SIZE))
+// Memory request size bits
+`define L3_MEM_REQ_SIZE_WIDTH    ($clog2($clog2(`L3_MEM_BYTEEN_WIDTH)+1))
 
 // Memory byte enable bits
 `define L3_MEM_BYTEEN_WIDTH      `L3_CACHE_LINE_SIZE
@@ -399,8 +402,8 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-`define VX_MEM_BYTEEN_WIDTH     `L3_MEM_BYTEEN_WIDTH   
-`define VX_MEM_ADDR_WIDTH       `L3_MEM_ADDR_WIDTH
+`define VX_MEM_BYTEEN_WIDTH     `L3_MEM_BYTEEN_WIDTH
+`define VX_MEM_REQ_SIZE_WIDTH   `L3_MEM_REQ_SIZE_WIDTH
 `define VX_MEM_DATA_WIDTH       `L3_MEM_DATA_WIDTH
 `define VX_MEM_TAG_WIDTH        `L3_MEM_TAG_WIDTH
 `define VX_CORE_TAG_WIDTH       `L3_CORE_TAG_WIDTH 

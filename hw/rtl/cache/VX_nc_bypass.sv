@@ -18,7 +18,9 @@ module VX_nc_bypass #(
     parameter CORE_DATA_WIDTH   = CORE_DATA_SIZE * 8,
     parameter MEM_DATA_WIDTH    = MEM_DATA_SIZE * 8,
     parameter CORE_TAG_OUT_WIDTH = CORE_TAG_IN_WIDTH - 1,
-    parameter MEM_SELECT_BITS   = `UP(`CLOG2(MEM_DATA_SIZE / CORE_DATA_SIZE))
+    parameter MEM_SELECT_BITS   = `UP(`CLOG2(MEM_DATA_SIZE / CORE_DATA_SIZE)),
+    localparam MEM_REQ_SIZE_WIDTH = $clog2($clog2(MEM_DATA_SIZE)+1),
+    localparam CORE_REQ_SIZE_WIDTH = $clog2($clog2(CORE_DATA_SIZE)+1)
  ) ( 
     input wire clk,
     input wire reset,
@@ -26,8 +28,9 @@ module VX_nc_bypass #(
     // Core request in   
     input wire [NUM_REQS-1:0]                       core_req_valid_in,
     input wire [NUM_REQS-1:0]                       core_req_rw_in,
-    input wire [NUM_REQS-1:0][CORE_ADDR_WIDTH-1:0]  core_req_addr_in,
+    input wire [NUM_REQS-1:0][`XLEN-1:0]            core_req_addr_in,
     input wire [NUM_REQS-1:0][CORE_DATA_SIZE-1:0]   core_req_byteen_in,
+    input wire [NUM_REQS-1:0][CORE_REQ_SIZE_WIDTH-1:0] core_req_size_in,
     input wire [NUM_REQS-1:0][CORE_DATA_WIDTH-1:0]  core_req_data_in,
     input wire [NUM_REQS-1:0][CORE_TAG_IN_WIDTH-1:0] core_req_tag_in,
     output wire [NUM_REQS-1:0]                      core_req_ready_in,
@@ -59,6 +62,7 @@ module VX_nc_bypass #(
     input wire                          mem_req_valid_in,
     input wire                          mem_req_rw_in,      
     input wire [MEM_ADDR_WIDTH-1:0]     mem_req_addr_in,
+    input wire [MEM_REQ_SIZE_WIDTH-1:0] mem_req_size_in,
     input wire [NUM_PORTS-1:0]          mem_req_pmask_in,
     input wire [NUM_PORTS-1:0][CORE_DATA_SIZE-1:0] mem_req_byteen_in,
     input wire [NUM_PORTS-1:0][MEM_SELECT_BITS-1:0] mem_req_wsel_in,
@@ -69,7 +73,8 @@ module VX_nc_bypass #(
     // Memory request out
     output wire                         mem_req_valid_out,
     output wire                         mem_req_rw_out,       
-    output wire [MEM_ADDR_WIDTH-1:0]    mem_req_addr_out,
+    output wire [`XLEN-1:0]             mem_req_addr_out,
+    output wire [MEM_REQ_SIZE_WIDTH-1:0]mem_req_size_out,
     output wire [NUM_PORTS-1:0]         mem_req_pmask_out,
     output wire [NUM_PORTS-1:0][CORE_DATA_SIZE-1:0] mem_req_byteen_out, 
     output wire [NUM_PORTS-1:0][MEM_SELECT_BITS-1:0] mem_req_wsel_out,
@@ -95,11 +100,11 @@ module VX_nc_bypass #(
     `UNUSED_VAR (reset)
 
     localparam CORE_REQ_TIDW = $clog2(NUM_REQS);
-    localparam MUX_DATAW = CORE_TAG_IN_WIDTH + CORE_DATA_WIDTH + CORE_DATA_SIZE + CORE_ADDR_WIDTH + 1;
+    localparam MUX_DATAW = CORE_TAG_IN_WIDTH + CORE_DATA_WIDTH + CORE_REQ_SIZE_WIDTH + CORE_DATA_SIZE + `XLEN + 1;
 
-    localparam CORE_LDATAW = $clog2(CORE_DATA_WIDTH);
-    localparam MEM_LDATAW  = $clog2(MEM_DATA_WIDTH);
-    localparam D = MEM_LDATAW - CORE_LDATAW;
+    localparam CORE_LDATAS = $clog2(CORE_DATA_SIZE);
+    localparam MEM_LDATAS  = $clog2(MEM_DATA_SIZE);
+    localparam D = MEM_LDATAS - CORE_LDATAS;
 
     // core request handling
 
@@ -126,7 +131,8 @@ module VX_nc_bypass #(
 
     assign core_req_valid_out  = core_req_valid_in & ~core_req_nc_tids;
     assign core_req_rw_out     = core_req_rw_in;
-    assign core_req_addr_out   = core_req_addr_in;
+    for (genvar i = 0; i < NUM_REQS; ++i) // We need to change addr width because the rest of the cache only understands truncated addresses
+        assign core_req_addr_out[i] = core_req_addr_in[i][(`XLEN-1)-:CORE_ADDR_WIDTH];
     assign core_req_byteen_out = core_req_byteen_in;
     assign core_req_data_out   = core_req_data_in;
 
@@ -170,16 +176,17 @@ module VX_nc_bypass #(
     wire [CORE_TAG_IN_WIDTH-1:0] core_req_tag_in_sel;
     wire [CORE_DATA_WIDTH-1:0] core_req_data_in_sel;
     wire [CORE_DATA_SIZE-1:0]  core_req_byteen_in_sel;
-    wire [CORE_ADDR_WIDTH-1:0] core_req_addr_in_sel;
+    wire [CORE_REQ_SIZE_WIDTH-1:0]  core_req_size_in_sel;
+    wire [`XLEN-1:0]           core_req_addr_in_sel;
     wire core_req_rw_in_sel;
 
     if (NUM_REQS > 1) begin
         wire [NUM_REQS-1:0][MUX_DATAW-1:0] core_req_nc_mux_in;
         for (genvar i = 0; i < NUM_REQS; ++i) begin
-            assign core_req_nc_mux_in[i] = {core_req_tag_in[i], core_req_data_in[i], core_req_byteen_in[i], core_req_addr_in[i], core_req_rw_in[i]};
+            assign core_req_nc_mux_in[i] = {core_req_tag_in[i], core_req_data_in[i], core_req_byteen_in[i], core_req_size_in[i], core_req_addr_in[i], core_req_rw_in[i]};
         end
 
-        assign {core_req_tag_in_sel, core_req_data_in_sel, core_req_byteen_in_sel, core_req_addr_in_sel, core_req_rw_in_sel} = core_req_nc_mux_in[core_req_nc_tid];
+        assign {core_req_tag_in_sel, core_req_data_in_sel, core_req_byteen_in_sel, core_req_size_in_sel, core_req_addr_in_sel, core_req_rw_in_sel} = core_req_nc_mux_in[core_req_nc_tid];
     end else begin
         assign core_req_tag_in_sel    = core_req_tag_in;
         assign core_req_data_in_sel   = core_req_data_in;
@@ -189,14 +196,15 @@ module VX_nc_bypass #(
     end
       
     assign mem_req_rw_out   = mem_req_valid_in ? mem_req_rw_in : core_req_rw_in_sel;
-    assign mem_req_addr_out = mem_req_valid_in ? mem_req_addr_in : core_req_addr_in_sel[D +: MEM_ADDR_WIDTH];        
+    assign mem_req_addr_out = mem_req_valid_in ? {mem_req_addr_in, (`XLEN-MEM_ADDR_WIDTH)'(0)} : core_req_addr_in_sel;
+    assign mem_req_size_out = mem_req_valid_in ? mem_req_size_in : MEM_REQ_SIZE_WIDTH'(core_req_size_in_sel);
     
     if (D != 0) begin
         reg [NUM_PORTS-1:0][CORE_DATA_SIZE-1:0]  mem_req_byteen_in_r;
         reg [NUM_PORTS-1:0][MEM_SELECT_BITS-1:0] mem_req_wsel_in_r;
         reg [NUM_PORTS-1:0][CORE_DATA_WIDTH-1:0] mem_req_data_in_r;
         
-        wire [D-1:0] req_addr_idx = core_req_addr_in_sel[D-1:0];
+        wire [D-1:0] req_addr_idx = core_req_addr_in_sel[MEM_LDATAS-1:CORE_LDATAS];
 
         always @(*) begin
             mem_req_byteen_in_r = 0;

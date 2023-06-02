@@ -13,7 +13,8 @@ module VX_pipeline #(
     output wire [`NUM_THREADS-1:0]          dcache_req_valid,
     output wire [`NUM_THREADS-1:0]          dcache_req_rw,
     output wire [`NUM_THREADS-1:0][3:0]     dcache_req_byteen,
-    output wire [`NUM_THREADS-1:0][29:0]    dcache_req_addr,
+    output wire [`NUM_THREADS-1:0][1:0]     dcache_req_size,
+    output wire [`NUM_THREADS-1:0][`XLEN-1:0] dcache_req_addr,
     output wire [`NUM_THREADS-1:0][31:0]    dcache_req_data,
     output wire [`NUM_THREADS-1:0][`DCACHE_CORE_TAG_WIDTH-1:0] dcache_req_tag,    
     input wire [`NUM_THREADS-1:0]           dcache_req_ready,
@@ -57,6 +58,7 @@ module VX_pipeline #(
     assign dcache_req_valid  = dcache_req_if.valid;
     assign dcache_req_rw     = dcache_req_if.rw;
     assign dcache_req_byteen = dcache_req_if.byteen;
+    assign dcache_req_size   = dcache_req_if.size;
     assign dcache_req_addr   = dcache_req_if.addr;
     assign dcache_req_data   = dcache_req_if.data;
     assign dcache_req_tag    = dcache_req_if.tag;

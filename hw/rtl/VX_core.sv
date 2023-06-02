@@ -13,7 +13,8 @@ module VX_core #(
     output wire                             mem_req_valid,
     output wire                             mem_req_rw,    
     output wire [`DCACHE_MEM_BYTEEN_WIDTH-1:0] mem_req_byteen,
-    output wire [`DCACHE_MEM_ADDR_WIDTH-1:0] mem_req_addr,
+    output wire [`DCACHE_MEM_REQ_SIZE_WIDTH-1:0] mem_req_size,
+    output wire [`XLEN-1:0]                 mem_req_addr,
     output wire [`DCACHE_MEM_DATA_WIDTH-1:0] mem_req_data,
     output wire [`L1_MEM_TAG_WIDTH-1:0]     mem_req_tag,
     input  wire                             mem_req_ready,
@@ -33,7 +34,7 @@ module VX_core #(
 
     VX_mem_req_if #(
         .DATA_WIDTH (`DCACHE_MEM_DATA_WIDTH),
-        .ADDR_WIDTH (`DCACHE_MEM_ADDR_WIDTH),
+        .ADDR_WIDTH (`XLEN),
         .TAG_WIDTH  (`L1_MEM_TAG_WIDTH)
     ) mem_req_if();
 
@@ -45,6 +46,7 @@ module VX_core #(
     assign mem_req_valid = mem_req_if.valid;
     assign mem_req_rw    = mem_req_if.rw;
     assign mem_req_byteen= mem_req_if.byteen;
+    assign mem_req_size  = mem_req_if.size;
     assign mem_req_addr  = mem_req_if.addr;
     assign mem_req_data  = mem_req_if.data;
     assign mem_req_tag   = mem_req_if.tag;
@@ -94,6 +96,7 @@ module VX_core #(
         .dcache_req_valid   (dcache_req_if.valid),
         .dcache_req_rw      (dcache_req_if.rw),
         .dcache_req_byteen  (dcache_req_if.byteen),
+        .dcache_req_size    (dcache_req_if.size),
         .dcache_req_addr    (dcache_req_if.addr),
         .dcache_req_data    (dcache_req_if.data),
         .dcache_req_tag     (dcache_req_if.tag),

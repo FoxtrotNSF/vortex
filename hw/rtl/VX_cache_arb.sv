@@ -13,7 +13,8 @@ module VX_cache_arb #(
     localparam ADDR_WIDTH   = (32-`CLOG2(DATA_SIZE)),
     localparam DATA_WIDTH   = (8 * DATA_SIZE),
     localparam LOG_NUM_REQS = `CLOG2(NUM_REQS),
-    localparam TAG_OUT_WIDTH = TAG_IN_WIDTH + LOG_NUM_REQS
+    localparam TAG_OUT_WIDTH = TAG_IN_WIDTH + LOG_NUM_REQS,
+    localparam DATA_lSIZE_WIDTH = $clog2($clog2(DATA_SIZE)+1)
 ) (
     input wire clk,
     input wire reset,
@@ -21,7 +22,8 @@ module VX_cache_arb #(
     // input requests    
     input wire [NUM_REQS-1:0][LANES-1:0]                    req_valid_in, 
     input wire [NUM_REQS-1:0][LANES-1:0]                    req_rw_in,   
-    input wire [NUM_REQS-1:0][LANES-1:0][DATA_SIZE-1:0]     req_byteen_in, 
+    input wire [NUM_REQS-1:0][LANES-1:0][DATA_SIZE-1:0]     req_byteen_in,
+    input wire [NUM_REQS-1:0][LANES-1:0][DATA_lSIZE_WIDTH-1:0] req_size_in,
     input wire [NUM_REQS-1:0][LANES-1:0][ADDR_WIDTH-1:0]    req_addr_in, 
     input wire [NUM_REQS-1:0][LANES-1:0][DATA_WIDTH-1:0]    req_data_in,    
     input wire [NUM_REQS-1:0][LANES-1:0][TAG_IN_WIDTH-1:0]  req_tag_in,  
@@ -30,7 +32,8 @@ module VX_cache_arb #(
     // output request
     output wire [LANES-1:0]                                 req_valid_out,
     output wire [LANES-1:0]                                 req_rw_out,  
-    output wire [LANES-1:0][DATA_SIZE-1:0]                  req_byteen_out,  
+    output wire [LANES-1:0][DATA_SIZE-1:0]                  req_byteen_out,
+    output wire [LANES-1:0][DATA_lSIZE_WIDTH-1:0]           req_size_out,
     output wire [LANES-1:0][ADDR_WIDTH-1:0]                 req_addr_out, 
     output wire [LANES-1:0][DATA_WIDTH-1:0]                 req_data_out,   
     output wire [LANES-1:0][TAG_OUT_WIDTH-1:0]              req_tag_out,    
@@ -50,7 +53,7 @@ module VX_cache_arb #(
     output wire [NUM_REQS-1:0][TAG_IN_WIDTH-1:0]            rsp_tag_out,
     input wire  [NUM_REQS-1:0]                              rsp_ready_out    
 );  
-    localparam REQ_DATAW = TAG_OUT_WIDTH + ADDR_WIDTH + 1 + DATA_SIZE + DATA_WIDTH;
+    localparam REQ_DATAW = TAG_OUT_WIDTH + ADDR_WIDTH + 1 + DATA_SIZE + DATA_lSIZE_WIDTH + DATA_WIDTH;
     localparam RSP_DATAW = LANES * (1 + DATA_WIDTH) + TAG_IN_WIDTH;
 
     if (NUM_REQS > 1) begin
@@ -72,7 +75,7 @@ module VX_cache_arb #(
                     .data_out (req_tag_in_w)
                 );
 
-                assign req_data_in_merged[i][j] = {req_tag_in_w, req_addr_in[i][j], req_rw_in[i][j], req_byteen_in[i][j], req_data_in[i][j]};
+                assign req_data_in_merged[i][j] = {req_tag_in_w, req_addr_in[i][j], req_rw_in[i][j], req_byteen_in[i][j], req_size_in[i][j], req_data_in[i][j]};
             end
         end
 
@@ -94,7 +97,7 @@ module VX_cache_arb #(
         );
 
         for (genvar i = 0; i < LANES; ++i) begin
-            assign {req_tag_out[i], req_addr_out[i], req_rw_out[i], req_byteen_out[i], req_data_out[i]} = req_data_out_merged[i];
+            assign {req_tag_out[i], req_addr_out[i], req_rw_out[i], req_byteen_out[i], req_size_out[i], req_data_out[i]} = req_data_out_merged[i];
         end
 
         ///////////////////////////////////////////////////////////////////////
@@ -145,6 +148,7 @@ module VX_cache_arb #(
         assign req_addr_out   = req_addr_in;
         assign req_rw_out     = req_rw_in;
         assign req_byteen_out = req_byteen_in;
+        assign req_size_out   = req_size_in;
         assign req_data_out   = req_data_in;
         assign req_ready_in   = req_ready_out;
 

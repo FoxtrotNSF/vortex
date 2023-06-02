@@ -12,8 +12,9 @@ module VX_cluster #(
     // Memory request
     output wire                             mem_req_valid,
     output wire                             mem_req_rw,    
-    output wire [`L2_MEM_BYTEEN_WIDTH-1:0]  mem_req_byteen,    
-    output wire [`L2_MEM_ADDR_WIDTH-1:0]    mem_req_addr,
+    output wire [`L2_MEM_BYTEEN_WIDTH-1:0]  mem_req_byteen,
+    output wire [`L2_MEM_REQ_SIZE_WIDTH-1:0] mem_req_size,
+    output wire [`XLEN-1:0]                 mem_req_addr,
     output wire [`L2_MEM_DATA_WIDTH-1:0]    mem_req_data,
     output wire [`L2_MEM_TAG_WIDTH-1:0]     mem_req_tag,
     input  wire                             mem_req_ready,
@@ -31,8 +32,9 @@ module VX_cluster #(
 
     wire [`NUM_CORES-1:0]                       per_core_mem_req_valid;
     wire [`NUM_CORES-1:0]                       per_core_mem_req_rw;    
-    wire [`NUM_CORES-1:0][`DCACHE_MEM_BYTEEN_WIDTH-1:0] per_core_mem_req_byteen;    
-    wire [`NUM_CORES-1:0][`DCACHE_MEM_ADDR_WIDTH-1:0] per_core_mem_req_addr;
+    wire [`NUM_CORES-1:0][`DCACHE_MEM_BYTEEN_WIDTH-1:0] per_core_mem_req_byteen;
+    wire [`NUM_CORES-1:0][`DCACHE_MEM_REQ_SIZE_WIDTH-1:0] per_core_mem_req_size;
+    wire [`NUM_CORES-1:0][`XLEN-1:0]            per_core_mem_req_addr;
     wire [`NUM_CORES-1:0][`DCACHE_MEM_DATA_WIDTH-1:0] per_core_mem_req_data;
     wire [`NUM_CORES-1:0][`L1_MEM_TAG_WIDTH-1:0] per_core_mem_req_tag;
     wire [`NUM_CORES-1:0]                       per_core_mem_req_ready;
@@ -58,7 +60,8 @@ module VX_cluster #(
 
             .mem_req_valid  (per_core_mem_req_valid[i]),
             .mem_req_rw     (per_core_mem_req_rw   [i]),                
-            .mem_req_byteen (per_core_mem_req_byteen[i]),                
+            .mem_req_byteen (per_core_mem_req_byteen[i]),
+            .mem_req_size   (per_core_mem_req_size [i]),
             .mem_req_addr   (per_core_mem_req_addr [i]),
             .mem_req_data   (per_core_mem_req_data [i]),
             .mem_req_tag    (per_core_mem_req_tag  [i]),
@@ -114,6 +117,7 @@ module VX_cluster #(
             .core_req_valid     (per_core_mem_req_valid),
             .core_req_rw        (per_core_mem_req_rw),
             .core_req_byteen    (per_core_mem_req_byteen),
+            .core_req_size      (per_core_mem_req_size),
             .core_req_addr      (per_core_mem_req_addr),
             .core_req_data      (per_core_mem_req_data),  
             .core_req_tag       (per_core_mem_req_tag),  
@@ -130,6 +134,7 @@ module VX_cluster #(
             .mem_req_valid      (mem_req_valid),
             .mem_req_rw         (mem_req_rw),        
             .mem_req_byteen     (mem_req_byteen),
+            .mem_req_size       (mem_req_size),
             .mem_req_addr       (mem_req_addr),
             .mem_req_data       (mem_req_data),
             .mem_req_tag        (mem_req_tag),
@@ -149,7 +154,7 @@ module VX_cluster #(
         VX_mem_arb #(
             .NUM_REQS     (`NUM_CORES),
             .DATA_WIDTH   (`DCACHE_MEM_DATA_WIDTH),
-            .ADDR_WIDTH   (`DCACHE_MEM_ADDR_WIDTH),           
+            .ADDR_WIDTH   (`XLEN),
             .TAG_IN_WIDTH (`L1_MEM_TAG_WIDTH),            
             .TYPE         ("R"),
             .TAG_SEL_IDX  (1), // Skip 0 for NC flag
@@ -163,6 +168,7 @@ module VX_cluster #(
             .req_valid_in   (per_core_mem_req_valid),
             .req_rw_in      (per_core_mem_req_rw),
             .req_byteen_in  (per_core_mem_req_byteen),
+            .req_size_in    (per_core_mem_req_size),
             .req_addr_in    (per_core_mem_req_addr),
             .req_data_in    (per_core_mem_req_data),  
             .req_tag_in     (per_core_mem_req_tag),  
@@ -172,6 +178,7 @@ module VX_cluster #(
             .req_valid_out  (mem_req_valid),
             .req_rw_out     (mem_req_rw),        
             .req_byteen_out (mem_req_byteen),        
+            .req_size_out   (mem_req_size),
             .req_addr_out   (mem_req_addr),
             .req_data_out   (mem_req_data),
             .req_tag_out    (mem_req_tag),

@@ -12,7 +12,8 @@ module VX_mem_arb #(
     
     parameter DATA_SIZE     = (DATA_WIDTH / 8),
     parameter LOG_NUM_REQS  = `CLOG2(NUM_REQS),
-    parameter TAG_OUT_WIDTH = TAG_IN_WIDTH + LOG_NUM_REQS
+    parameter TAG_OUT_WIDTH = TAG_IN_WIDTH + LOG_NUM_REQS,
+    localparam DATA_LSIZE_WIDTH = $clog2($clog2(DATA_SIZE)+1)
 ) (
     input wire clk,
     input wire reset,
@@ -22,7 +23,8 @@ module VX_mem_arb #(
     input wire [NUM_REQS-1:0][TAG_IN_WIDTH-1:0] req_tag_in,  
     input wire [NUM_REQS-1:0][ADDR_WIDTH-1:0]   req_addr_in,
     input wire [NUM_REQS-1:0]                   req_rw_in,  
-    input wire [NUM_REQS-1:0][DATA_SIZE-1:0]    req_byteen_in,  
+    input wire [NUM_REQS-1:0][DATA_SIZE-1:0]    req_byteen_in,
+    input wire [NUM_REQS-1:0][DATA_LSIZE_WIDTH-1:0] req_size_in,
     input wire [NUM_REQS-1:0][DATA_WIDTH-1:0]   req_data_in,  
     output wire [NUM_REQS-1:0]                  req_ready_in,
 
@@ -31,7 +33,8 @@ module VX_mem_arb #(
     output wire [TAG_OUT_WIDTH-1:0]             req_tag_out,   
     output wire [ADDR_WIDTH-1:0]                req_addr_out, 
     output wire                                 req_rw_out,  
-    output wire [DATA_SIZE-1:0]                 req_byteen_out,  
+    output wire [DATA_SIZE-1:0]                 req_byteen_out,
+    output wire [DATA_LSIZE_WIDTH-1:0]          req_size_out,
     output wire [DATA_WIDTH-1:0]                req_data_out,    
     input wire                                  req_ready_out,
 
@@ -47,7 +50,7 @@ module VX_mem_arb #(
     output wire [NUM_REQS-1:0][DATA_WIDTH-1:0]  rsp_data_out,
     input wire  [NUM_REQS-1:0]                  rsp_ready_out    
 );
-    localparam REQ_DATAW = TAG_OUT_WIDTH + ADDR_WIDTH + 1 + DATA_SIZE + DATA_WIDTH;
+    localparam REQ_DATAW = TAG_OUT_WIDTH + ADDR_WIDTH + 1 + DATA_SIZE + DATA_LSIZE_WIDTH + DATA_WIDTH;
     localparam RSP_DATAW = TAG_IN_WIDTH + DATA_WIDTH;
 
     if (NUM_REQS > 1) begin
@@ -67,7 +70,7 @@ module VX_mem_arb #(
                 .data_out (req_tag_in_w)
             );
 
-            assign req_data_in_merged[i] = {req_tag_in_w, req_addr_in[i], req_rw_in[i], req_byteen_in[i], req_data_in[i]};
+            assign req_data_in_merged[i] = {req_tag_in_w, req_addr_in[i], req_rw_in[i], req_byteen_in[i], req_size_in[i], req_data_in[i]};
         end
 
         VX_stream_arbiter #(            
@@ -82,7 +85,7 @@ module VX_mem_arb #(
             .data_in   (req_data_in_merged),
             .ready_in  (req_ready_in),
             .valid_out (req_valid_out),
-            .data_out  ({req_tag_out, req_addr_out, req_rw_out, req_byteen_out, req_data_out}),
+            .data_out  ({req_tag_out, req_addr_out, req_rw_out, req_byteen_out, req_size_out, req_data_out}),
             .ready_out (req_ready_out)
         );
 
@@ -133,6 +136,7 @@ module VX_mem_arb #(
         assign req_addr_out   = req_addr_in;
         assign req_rw_out     = req_rw_in;
         assign req_byteen_out = req_byteen_in;
+        assign req_size_out   = req_size_in;
         assign req_data_out   = req_data_in;
         assign req_ready_in   = req_ready_out;
 
