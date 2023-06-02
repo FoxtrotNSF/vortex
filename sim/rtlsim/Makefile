@@ -5,7 +5,7 @@ THIRD_PARTY_DIR = ../../third_party
 
 CXXFLAGS += -std=c++11 -Wall -Wextra -Wfatal-errors -Wno-array-bounds
 CXXFLAGS += -fPIC -Wno-maybe-uninitialized
-CXXFLAGS += -I../../../hw -I../../common
+CXXFLAGS += -I../../../hw -I../../common -I../../../runtime/include
 CXXFLAGS += -I../$(THIRD_PARTY_DIR)/softfloat/source/include
 CXXFLAGS += -I../$(THIRD_PARTY_DIR)
 
