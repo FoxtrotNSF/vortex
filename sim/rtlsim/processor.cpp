@@ -26,7 +26,7 @@
 #include <queue>
 #include <vector>
 #include <string>
-#include <sstream> 
+#include <sstream>
 #include <unordered_map>
 
 #define RAMULATOR
@@ -477,7 +477,7 @@ private:
         auto mem_req = new mem_req_t();
         mem_req->write = false;
         mem_req->ready = false;
-        mem_req->tag  = device_->m_axi_arid;   
+        mem_req->tag  = device_->m_axi_arid;
         mem_req->addr = device_->m_axi_araddr;
 
         uintptr_t access_size = pow(2, device_->m_axi_arsize);

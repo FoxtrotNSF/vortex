@@ -1,4 +1,4 @@
-`include "VX_define.vh"
+`include "VX_fpu_types.vh"
 
 module VX_csr_data #(
     parameter CORE_ID = 0
