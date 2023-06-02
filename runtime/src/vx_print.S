@@ -1,5 +1,5 @@
 #include <VX_config.h>
-
+#ifndef USE_UART_FOR_VX_PRINT
 .type vx_putchar, @function
 .global vx_putchar
 vx_putchar:
@@ -9,3 +9,4 @@ vx_putchar:
     add t0, t0, t1    
     sb a0, 0(t0)
     ret
+#endif
