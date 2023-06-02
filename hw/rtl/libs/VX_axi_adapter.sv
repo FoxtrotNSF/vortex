@@ -9,7 +9,9 @@ module VX_axi_adapter #(
     parameter AXI_TID_WIDTH    = VX_TAG_WIDTH,
     
     parameter VX_BYTEEN_WIDTH  = (VX_DATA_WIDTH / 8),
-    parameter AXI_STROBE_WIDTH = (AXI_DATA_WIDTH / 8)
+    parameter AXI_STROBE_WIDTH = (AXI_DATA_WIDTH / 8),
+    localparam VX_SIZE_WIDTH  = $clog2($clog2(VX_BYTEEN_WIDTH + 1)),
+    localparam AXI_SIZE_WIDTH = $clog2($clog2(AXI_STROBE_WIDTH + 1))
 ) (
     input  wire                         clk,
     input  wire                         reset,
@@ -18,6 +20,7 @@ module VX_axi_adapter #(
     input wire                          mem_req_valid,
     input wire                          mem_req_rw,
     input wire [VX_BYTEEN_WIDTH-1:0]    mem_req_byteen,
+    input wire [VX_SIZE_WIDTH-1:0]      mem_req_size,
     input wire [VX_ADDR_WIDTH-1:0]      mem_req_addr,
     input wire [VX_DATA_WIDTH-1:0]      mem_req_data,
     input wire [VX_TAG_WIDTH-1:0]       mem_req_tag,
@@ -33,7 +36,7 @@ module VX_axi_adapter #(
     output wire [AXI_TID_WIDTH-1:0]     m_axi_awid,
     output wire [AXI_ADDR_WIDTH-1:0]    m_axi_awaddr,
     output wire [7:0]                   m_axi_awlen,
-    output wire [2:0]                   m_axi_awsize,
+    output wire [AXI_SIZE_WIDTH-1:0]    m_axi_awsize,
     output wire [1:0]                   m_axi_awburst,
     output wire                         m_axi_awlock,    
     output wire [3:0]                   m_axi_awcache,
@@ -59,7 +62,7 @@ module VX_axi_adapter #(
     output wire [AXI_TID_WIDTH-1:0]     m_axi_arid,
     output wire [AXI_ADDR_WIDTH-1:0]    m_axi_araddr,
     output wire [7:0]                   m_axi_arlen,
-    output wire [2:0]                   m_axi_arsize,
+    output wire [AXI_SIZE_WIDTH-1:0]    m_axi_arsize,
     output wire [1:0]                   m_axi_arburst,    
     output wire                         m_axi_arlock,    
     output wire [3:0]                   m_axi_arcache,
@@ -76,8 +79,6 @@ module VX_axi_adapter #(
     input wire                          m_axi_rvalid,
     output wire                         m_axi_rready
 );
-    localparam AXSIZE = $clog2(VX_DATA_WIDTH/8);
-
     `STATIC_ASSERT((AXI_DATA_WIDTH == VX_DATA_WIDTH), ("invalid parameter"))
     `STATIC_ASSERT((AXI_TID_WIDTH == VX_TAG_WIDTH), ("invalid parameter"))
 
@@ -108,10 +109,10 @@ module VX_axi_adapter #(
     // AXI write request address channel        
     assign m_axi_awvalid    = mem_req_valid && mem_req_rw && !awvalid_ack;
     assign m_axi_awid       = mem_req_tag;
-    assign m_axi_awaddr     = AXI_ADDR_WIDTH'(mem_req_addr) << AXSIZE;
+    assign m_axi_awaddr     = AXI_ADDR_WIDTH'(mem_req_addr);
     assign m_axi_awlen      = 8'b00000000;    
-    assign m_axi_awsize     = 3'(AXSIZE);
-    assign m_axi_awburst    = 2'b00;    
+    assign m_axi_awsize     = mem_req_size;
+    assign m_axi_awburst    = 2'b01;
     assign m_axi_awlock     = 1'b0;    
     assign m_axi_awcache    = 4'b0;
     assign m_axi_awprot     = 3'b0;
@@ -131,10 +132,10 @@ module VX_axi_adapter #(
     // AXI read request channel
     assign m_axi_arvalid    = mem_req_valid && !mem_req_rw;
     assign m_axi_arid       = mem_req_tag;
-    assign m_axi_araddr     = AXI_ADDR_WIDTH'(mem_req_addr) << AXSIZE;
+    assign m_axi_araddr     = AXI_ADDR_WIDTH'(mem_req_addr);
     assign m_axi_arlen      = 8'b00000000;
-    assign m_axi_arsize     = 3'(AXSIZE);
-    assign m_axi_arburst    = 2'b00;  
+    assign m_axi_arsize     = mem_req_size;
+    assign m_axi_arburst    = 2'b01;
     assign m_axi_arlock     = 1'b0;    
     assign m_axi_arcache    = 4'b0;
     assign m_axi_arprot     = 3'b0;
