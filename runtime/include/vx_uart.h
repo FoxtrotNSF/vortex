@@ -9,8 +9,8 @@
 #define DATA_BITS   8
 #define UART_RX_ADDR     (UART_MODULE_ADDR + 0x00)
 #define UART_TX_ADDR     (UART_MODULE_ADDR + 0x04)
-#define UART_CTRL_ADDR   (UART_MODULE_ADDR + 0x08)
-#define UART_STAT_ADDR   (UART_MODULE_ADDR + 0x0C)
+#define UART_STAT_ADDR   (UART_MODULE_ADDR + 0x08)
+#define UART_CTRL_ADDR   (UART_MODULE_ADDR + 0x0C)
 
 
 typedef struct __attribute__((packed)) {
