@@ -9,7 +9,8 @@ OUTPUT_ARCH(riscv)
 ENTRY(_start)
 SECTIONS
 {
-  . = 0x80000000;
+PROVIDE(__code_start  = 0x00000000);
+  . = __code_start;
   .interp         : { *(.interp) }
   .note.gnu.build-id  : { *(.note.gnu.build-id) }
   .hash           : { *(.hash) }
@@ -213,7 +214,7 @@ SECTIONS
 		KEEP(*(.stack*))
 	}
   __stack_usage = SIZEOF(.stack_dummy);
-  PROVIDE(__stack_top  = 0xFF000000);
+  PROVIDE(__stack_top  = 0x7F000000);
   PROVIDE(__stack_size = 0x400);
 	PROVIDE(__stack = __stack_top);
 	ASSERT(__stack_usage <= __stack_size, "stack overflow")
