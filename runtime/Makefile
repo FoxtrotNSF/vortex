@@ -19,12 +19,12 @@ else
 CFLAGS += -march=rv64imfd -mabi=lp64d
 endif
 
-CFLAGS += -O3 -mcmodel=medany -Wstack-usage=1024 -fno-exceptions -fdata-sections -ffunction-sections
+CFLAGS += -O3 -mcmodel=medany -Wstack-usage=1024 -fno-exceptions -fdata-sections -ffunction-sections -DUSE_UART_FOR_VX_PRINT
 CFLAGS += -I./include -I../hw
 
 PROJECT = libvortexrt
 
-SRCS = ./src/vx_start.S ./src/vx_syscalls.c ./src/vx_print.S ./src/tinyprintf.c ./src/vx_print.c ./src/vx_spawn.c ./src/vx_spawn.S ./src/vx_perf.c
+SRCS = ./src/vx_start.S ./src/vx_syscalls.c ./src/vx_print.S ./src/tinyprintf.c ./src/vx_print.c ./src/vx_spawn.c ./src/vx_spawn.S ./src/vx_uart.c ./src/vx_timeit.c #./src/vx_perf.c
 
 OBJS := $(addsuffix .o, $(notdir $(SRCS)))
 
