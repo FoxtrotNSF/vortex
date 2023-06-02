@@ -206,17 +206,26 @@ module VX_lsu_unit #(
     for (genvar i = 0; i < `NUM_THREADS; i++) begin
 
         reg [3:0]  mem_req_byteen;    
+        reg [1:0]  mem_req_size; // {0: 1B, 1: 2B, 2: 4B, 3: 8B}
         reg [31:0] mem_req_data;
 
         always @(*) begin
-            mem_req_byteen = {4{req_wb}};
+            mem_req_byteen = 0;
+            mem_req_size   = 2'(2); // 4B
             case (`INST_LSU_WSIZE(req_type))
-                0: mem_req_byteen[req_offset[i]] = 1;
+                0: begin
+                    mem_req_byteen[req_offset[i]] = 1;
+                    mem_req_size                  = 2'(0); // 1B
+                end
                 1: begin
                     mem_req_byteen[req_offset[i]] = 1;
                     mem_req_byteen[{req_offset[i][1], 1'b1}] = 1;
+                    mem_req_size                  = 2'(1); // 2B
                 end
-                default : mem_req_byteen = {4{1'b1}};
+                default : begin
+                    mem_req_byteen = {4{1'b1}};
+                    mem_req_size   = 2'(2); // 4B
+                end
             endcase
         end
 
@@ -232,8 +241,9 @@ module VX_lsu_unit #(
 
         assign dcache_req_if.valid[i]  = req_valid && req_dep_ready && req_tmask_dup[i] && !req_sent_mask[i];
         assign dcache_req_if.rw[i]     = ~req_wb;
-        assign dcache_req_if.addr[i]   = req_addr[i][31:2];
+        assign dcache_req_if.addr[i]   = req_addr[i];
         assign dcache_req_if.byteen[i] = mem_req_byteen;
+        assign dcache_req_if.size[i]   = mem_req_size;
         assign dcache_req_if.data[i]   = mem_req_data;
         assign dcache_req_if.tag[i]    = {req_uuid, `LSU_TAG_ID_BITS'(req_tag), req_addr_type[i]};
     end
@@ -301,6 +311,7 @@ module VX_lsu_unit #(
     `SCOPE_ASSIGN (dcache_req_addr,  req_addr);    
     `SCOPE_ASSIGN (dcache_req_rw,    ~req_wb);
     `SCOPE_ASSIGN (dcache_req_byteen,dcache_req_if.byteen);
+    `SCOPE_ASSIGN (dcache_req_size,  dcache_req_if.size);
     `SCOPE_ASSIGN (dcache_req_data,  dcache_req_if.data);
     `SCOPE_ASSIGN (dcache_req_tag,   req_tag);
     `SCOPE_ASSIGN (dcache_rsp_fire,  dcache_rsp_if.tmask & {`NUM_THREADS{dcache_rsp_fire}});
@@ -347,7 +358,7 @@ module VX_lsu_unit #(
             if (dcache_req_if.rw[0]) begin
                 dpi_trace("%d: D$%0d Wr Req: wid=%0d, PC=%0h, tmask=%b, addr=", $time, CORE_ID, req_wid, req_pc, dcache_req_fire);
                 `TRACE_ARRAY1D(req_addr, `NUM_THREADS);
-                dpi_trace(", tag=%0h, byteen=%0h, type=", req_tag, dcache_req_if.byteen);
+                dpi_trace(", tag=%0h, byteen=%0h, size=%0h, type=", req_tag, dcache_req_if.byteen, dcache_req_if.size);
                 `TRACE_ARRAY1D(req_addr_type, `NUM_THREADS);
                 dpi_trace(", data=");
                 `TRACE_ARRAY1D(dcache_req_if.data, `NUM_THREADS);
@@ -355,7 +366,7 @@ module VX_lsu_unit #(
             end else begin
                 dpi_trace("%d: D$%0d Rd Req: prefetch=%b, wid=%0d, PC=%0h, tmask=%b, addr=", $time, CORE_ID, req_is_prefetch, req_wid, req_pc, dcache_req_fire);
                 `TRACE_ARRAY1D(req_addr, `NUM_THREADS);
-                dpi_trace(", tag=%0h, byteen=%0h, type=", req_tag, dcache_req_if.byteen);
+                dpi_trace(", tag=%0h, byteen=%0h, size=%0h, type=", req_tag, dcache_req_if.byteen, dcache_req_if.size);
                 `TRACE_ARRAY1D(req_addr_type, `NUM_THREADS);
                 dpi_trace(", rd=%0d, is_dup=%b (#%0d)\n", req_rd, req_is_dup, req_uuid);
             end

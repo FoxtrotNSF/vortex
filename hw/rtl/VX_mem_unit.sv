@@ -42,7 +42,7 @@ module VX_mem_unit # (
 
     VX_mem_req_if #(
         .DATA_WIDTH (`DCACHE_MEM_DATA_WIDTH),
-        .ADDR_WIDTH (`DCACHE_MEM_ADDR_WIDTH),
+        .ADDR_WIDTH (`XLEN),
         .TAG_WIDTH  (`DCACHE_MEM_TAG_WIDTH)
     ) dcache_mem_req_if();
 
@@ -93,6 +93,7 @@ module VX_mem_unit # (
         .core_req_valid     (icache_req_if.valid),
         .core_req_rw        (1'b0),
         .core_req_byteen    ('b0),
+        .core_req_size      ('x),
         .core_req_addr      (icache_req_if.addr),
         .core_req_data      ('x),        
         .core_req_tag       (icache_req_if.tag),
@@ -112,7 +113,8 @@ module VX_mem_unit # (
         // Memory Request
         .mem_req_valid     (icache_mem_req_if.valid),
         .mem_req_rw        (icache_mem_req_if.rw),        
-        .mem_req_byteen    (icache_mem_req_if.byteen),        
+        .mem_req_byteen    (icache_mem_req_if.byteen),
+        .mem_req_size      (icache_mem_req_if.size),
         .mem_req_addr      (icache_mem_req_if.addr),
         .mem_req_data      (icache_mem_req_if.data),
         .mem_req_tag       (icache_mem_req_if.tag),
@@ -153,6 +155,7 @@ module VX_mem_unit # (
         .core_req_valid     (dcache_req_tmp_if.valid),
         .core_req_rw        (dcache_req_tmp_if.rw),
         .core_req_byteen    (dcache_req_tmp_if.byteen),
+        .core_req_size      (dcache_req_tmp_if.size),
         .core_req_addr      (dcache_req_tmp_if.addr),
         .core_req_data      (dcache_req_tmp_if.data),        
         .core_req_tag       (dcache_req_tmp_if.tag),
@@ -172,7 +175,8 @@ module VX_mem_unit # (
         // Memory request
         .mem_req_valid      (dcache_mem_req_if.valid),
         .mem_req_rw         (dcache_mem_req_if.rw),        
-        .mem_req_byteen     (dcache_mem_req_if.byteen),        
+        .mem_req_byteen     (dcache_mem_req_if.byteen),
+        .mem_req_size       (dcache_mem_req_if.size),
         .mem_req_addr       (dcache_mem_req_if.addr),
         .mem_req_data       (dcache_mem_req_if.data),
         .mem_req_tag        (dcache_mem_req_if.tag),
@@ -218,6 +222,7 @@ module VX_mem_unit # (
             .req_valid_in   (dcache_req_if.valid),
             .req_rw_in      (dcache_req_if.rw),        
             .req_byteen_in  (dcache_req_if.byteen),        
+            .req_size_in    (dcache_req_if.size),
             .req_addr_in    (dcache_req_if.addr),
             .req_data_in    (dcache_req_if.data),
             .req_tag_in     (dcache_req_if.tag),
@@ -227,6 +232,7 @@ module VX_mem_unit # (
             .req_valid_out  ({smem_req_if.valid,  dcache_req_tmp_if.valid}),
             .req_rw_out     ({smem_req_if.rw,     dcache_req_tmp_if.rw}),
             .req_byteen_out ({smem_req_if.byteen, dcache_req_tmp_if.byteen}),
+            .req_size_out   ({smem_req_if.size,   dcache_req_tmp_if.size}),
             .req_addr_out   ({smem_req_if.addr,   dcache_req_tmp_if.addr}),
             .req_data_out   ({smem_req_if.data,   dcache_req_tmp_if.data}),  
             .req_tag_out    ({smem_req_if.tag,    dcache_req_tmp_if.tag}),  
@@ -246,6 +252,11 @@ module VX_mem_unit # (
             .rsp_data_out   (dcache_rsp_if.data),
             .rsp_ready_out  (dcache_rsp_if.ready)
         );
+        // Fix SMEM truncated address bus
+        `UNUSED_VAR(smem_req_if.size);
+        `define SMEM_ADDR_WIDTH (`XLEN-`CLOG2(`SMEM_WORD_SIZE))
+        wire [`SMEM_NUM_REQS-1:0][`SMEM_ADDR_WIDTH-1:0] smem_addr;
+        for(genvar i = 0; i < `SMEM_NUM_REQS; ++i) assign smem_addr[i] = smem_req_if.addr[i][(`XLEN-1)-:`SMEM_ADDR_WIDTH];
 
         VX_shared_mem #(
             .CACHE_ID           (`SMEM_ID),
@@ -270,7 +281,7 @@ module VX_mem_unit # (
             .core_req_valid     (smem_req_if.valid),
             .core_req_rw        (smem_req_if.rw),
             .core_req_byteen    (smem_req_if.byteen),
-            .core_req_addr      (smem_req_if.addr),
+            .core_req_addr      (smem_addr),
             .core_req_data      (smem_req_if.data),        
             .core_req_tag       (smem_req_if.tag),
             .core_req_ready     (smem_req_if.ready),
@@ -286,15 +297,15 @@ module VX_mem_unit # (
         // core to D-cache request
         for (genvar i = 0; i < `DCACHE_NUM_REQS; ++i) begin
             VX_skid_buffer #(
-                .DATAW ((32-`CLOG2(`DCACHE_WORD_SIZE)) + 1 + `DCACHE_WORD_SIZE + (8*`DCACHE_WORD_SIZE) + `DCACHE_CORE_TAG_WIDTH)
+                .DATAW ((32-`CLOG2(`DCACHE_WORD_SIZE)) + 1 + `DCACHE_WORD_SIZE + `CORE_MEM_REQ_SIZE_WIDTH + (8*`DCACHE_WORD_SIZE) + `DCACHE_CORE_TAG_WIDTH)
             ) req_buf (
                 .clk       (clk),
                 .reset     (reset),
                 .valid_in  (dcache_req_if.valid[i]),        
-                .data_in   ({dcache_req_if.addr[i], dcache_req_if.rw[i], dcache_req_if.byteen[i], dcache_req_if.data[i], dcache_req_if.tag[i]}),
+                .data_in   ({dcache_req_if.addr[i], dcache_req_if.rw[i], dcache_req_if.byteen[i], dcache_req_if.size[i], dcache_req_if.data[i], dcache_req_if.tag[i]}),
                 .ready_in  (dcache_req_if.ready[i]),
                 .valid_out (dcache_req_tmp_if.valid[i]),
-                .data_out  ({dcache_req_tmp_if.addr[i], dcache_req_tmp_if.rw[i], dcache_req_tmp_if.byteen[i], dcache_req_tmp_if.data[i], dcache_req_tmp_if.tag[i]}),
+                .data_out  ({dcache_req_tmp_if.addr[i], dcache_req_tmp_if.rw[i], dcache_req_tmp_if.byteen[i], dcache_req_tmp_if.size[i], dcache_req_tmp_if.data[i], dcache_req_tmp_if.tag[i]}),
                 .ready_out (dcache_req_tmp_if.ready[i])
             );
         end
@@ -312,10 +323,12 @@ module VX_mem_unit # (
     assign icache_mem_rsp_if.tag = icache_mem_rsp_tag[`ICACHE_MEM_TAG_WIDTH-1:0];
     `UNUSED_VAR (icache_mem_rsp_tag)
 
+    `define LEXPEND(x, s) {x, (s-$bits(x))'(0)}
+
     VX_mem_arb #(
         .NUM_REQS      (2),
         .DATA_WIDTH    (`DCACHE_MEM_DATA_WIDTH),
-        .ADDR_WIDTH    (`DCACHE_MEM_ADDR_WIDTH),
+        .ADDR_WIDTH    (`XLEN),
         .TAG_IN_WIDTH  (`DCACHE_MEM_TAG_WIDTH),
         .TYPE          ("R"),
         .TAG_SEL_IDX   (1), // Skip 0 for NC flag
@@ -329,7 +342,8 @@ module VX_mem_unit # (
         .req_valid_in   ({dcache_mem_req_if.valid,  icache_mem_req_if.valid}),
         .req_rw_in      ({dcache_mem_req_if.rw,     icache_mem_req_if.rw}),
         .req_byteen_in  ({dcache_mem_req_if.byteen, icache_mem_req_if.byteen}),
-        .req_addr_in    ({dcache_mem_req_if.addr,   icache_mem_req_if.addr}),
+        .req_size_in    ({dcache_mem_req_if.size,   icache_mem_req_if.size}),
+        .req_addr_in    ({dcache_mem_req_if.addr,   `LEXPEND(icache_mem_req_if.addr,`XLEN)}), // The icache request is expanded to normal size here
         .req_data_in    ({dcache_mem_req_if.data,   icache_mem_req_if.data}),  
         .req_tag_in     ({dcache_mem_req_if.tag,    icache_mem_req_tag}),  
         .req_ready_in   ({dcache_mem_req_if.ready,  icache_mem_req_if.ready}),
@@ -337,7 +351,8 @@ module VX_mem_unit # (
         // Memory request
         .req_valid_out  (mem_req_if.valid),
         .req_rw_out     (mem_req_if.rw),        
-        .req_byteen_out (mem_req_if.byteen),        
+        .req_byteen_out (mem_req_if.byteen),
+        .req_size_out   (mem_req_if.size),
         .req_addr_out   (mem_req_if.addr),
         .req_data_out   (mem_req_if.data),
         .req_tag_out    (mem_req_if.tag),

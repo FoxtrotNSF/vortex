@@ -93,6 +93,7 @@ module VX_execute #(
         .req_valid_in   ({tex_dcache_req_if.valid,  lsu_dcache_req_if.valid}),
         .req_rw_in      ({tex_dcache_req_if.rw,     lsu_dcache_req_if.rw}),
         .req_byteen_in  ({tex_dcache_req_if.byteen, lsu_dcache_req_if.byteen}),
+        .req_size_in    ({tex_dcache_req_if.size,   lsu_dcache_req_if.size}),
         .req_addr_in    ({tex_dcache_req_if.addr,   lsu_dcache_req_if.addr}),
         .req_data_in    ({tex_dcache_req_if.data,   lsu_dcache_req_if.data}),  
         .req_tag_in     ({tex_dcache_req_if.tag,    lsu_dcache_req_if.tag}),  
@@ -101,7 +102,8 @@ module VX_execute #(
         // Dcache request
         .req_valid_out  (dcache_req_if.valid),
         .req_rw_out     (dcache_req_if.rw),        
-        .req_byteen_out (dcache_req_if.byteen),        
+        .req_byteen_out (dcache_req_if.byteen),
+        .req_size_out   (dcache_req_if.size),
         .req_addr_out   (dcache_req_if.addr),
         .req_data_out   (dcache_req_if.data),
         .req_tag_out    (dcache_req_if.tag),

@@ -63,7 +63,8 @@ module Vortex_axi #(
     wire                            mem_req_valid;
     wire                            mem_req_rw; 
     wire [`VX_MEM_BYTEEN_WIDTH-1:0] mem_req_byteen;
-    wire [`VX_MEM_ADDR_WIDTH-1:0]   mem_req_addr;
+    wire [`VX_MEM_REQ_SIZE_WIDTH-1:0] mem_req_size;
+    wire [`XLEN-1:0]                mem_req_addr;
     wire [`VX_MEM_DATA_WIDTH-1:0]   mem_req_data;
     wire [`VX_MEM_TAG_WIDTH-1:0]    mem_req_tag;
     wire                            mem_req_ready;
@@ -75,7 +76,7 @@ module Vortex_axi #(
 
     VX_axi_adapter #(
         .VX_DATA_WIDTH    (`VX_MEM_DATA_WIDTH), 
-        .VX_ADDR_WIDTH    (`VX_MEM_ADDR_WIDTH),            
+        .VX_ADDR_WIDTH    (`XLEN),
         .VX_TAG_WIDTH     (`VX_MEM_TAG_WIDTH),
         .VX_BYTEEN_WIDTH  (AXI_STROBE_WIDTH),
         .AXI_DATA_WIDTH   (AXI_DATA_WIDTH), 
@@ -89,6 +90,7 @@ module Vortex_axi #(
         .mem_req_valid  (mem_req_valid),
         .mem_req_rw     (mem_req_rw),
         .mem_req_byteen (mem_req_byteen),
+        .mem_req_size   (mem_req_size),
         .mem_req_addr   (mem_req_addr),
         .mem_req_data   (mem_req_data),
         .mem_req_tag    (mem_req_tag),
@@ -149,6 +151,7 @@ module Vortex_axi #(
         .mem_req_valid  (mem_req_valid),
         .mem_req_rw     (mem_req_rw),
         .mem_req_byteen (mem_req_byteen),
+        .mem_req_size   (mem_req_size),
         .mem_req_addr   (mem_req_addr),
         .mem_req_data   (mem_req_data),
         .mem_req_tag    (mem_req_tag),

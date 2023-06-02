@@ -46,7 +46,12 @@ module VX_cache #(
     // enable bypass for non-cacheable addresses
     parameter NC_ENABLE                     = 0,
 
-    parameter WORD_SELECT_BITS              = `UP(`WORD_SELECT_BITS)
+    parameter WORD_SELECT_BITS              = `UP(`WORD_SELECT_BITS),
+
+    localparam MEM_REQ_SIZE_WIDTH = $clog2($clog2(CACHE_LINE_SIZE)+1),
+    localparam CORE_REQ_SIZE_WIDTH = $clog2($clog2(WORD_SIZE)+1),
+    localparam CORE_ADDR_SIZE = NC_ENABLE ? `XLEN : `WORD_ADDR_WIDTH,
+    localparam MEM_ADDR_WIDTH = NC_ENABLE ? `XLEN : `MEM_ADDR_WIDTH
  ) (
     `SCOPE_IO_VX_cache    
     
@@ -61,8 +66,9 @@ module VX_cache #(
     // Core request    
     input wire [NUM_REQS-1:0]                       core_req_valid,
     input wire [NUM_REQS-1:0]                       core_req_rw,
-    input wire [NUM_REQS-1:0][`WORD_ADDR_WIDTH-1:0] core_req_addr,
+    input wire [NUM_REQS-1:0][CORE_ADDR_SIZE-1:0]   core_req_addr,
     input wire [NUM_REQS-1:0][WORD_SIZE-1:0]        core_req_byteen,
+    input wire [NUM_REQS-1:0][CORE_REQ_SIZE_WIDTH-1:0] core_req_size,
     input wire [NUM_REQS-1:0][`WORD_WIDTH-1:0]      core_req_data,
     input wire [NUM_REQS-1:0][CORE_TAG_WIDTH-1:0]   core_req_tag,
     output wire [NUM_REQS-1:0]                      core_req_ready,
@@ -77,8 +83,9 @@ module VX_cache #(
     // Memory request
     output wire                             mem_req_valid,
     output wire                             mem_req_rw,    
-    output wire [CACHE_LINE_SIZE-1:0]       mem_req_byteen,    
-    output wire [`MEM_ADDR_WIDTH-1:0]       mem_req_addr,
+    output wire [CACHE_LINE_SIZE-1:0]       mem_req_byteen,
+    output wire [MEM_REQ_SIZE_WIDTH-1:0]    mem_req_size,
+    output wire [MEM_ADDR_WIDTH-1:0]        mem_req_addr,
     output wire [`CACHE_LINE_WIDTH-1:0]     mem_req_data,
     output wire [MEM_TAG_WIDTH-1:0]         mem_req_tag,
     input  wire                             mem_req_ready,
@@ -109,21 +116,22 @@ module VX_cache #(
     wire                             mem_req_valid_sb;
     wire                             mem_req_rw_sb;
     wire [CACHE_LINE_SIZE-1:0]       mem_req_byteen_sb;   
-    wire [`MEM_ADDR_WIDTH-1:0]       mem_req_addr_sb;
+    wire [MEM_REQ_SIZE_WIDTH-1:0]    mem_req_size_sb;
+    wire [MEM_ADDR_WIDTH-1:0]        mem_req_addr_sb;
     wire [`CACHE_LINE_WIDTH-1:0]     mem_req_data_sb;
     wire [MEM_TAG_WIDTH-1:0]         mem_req_tag_sb;
     wire                             mem_req_ready_sb;
 
     VX_skid_buffer #(
-        .DATAW    (1+CACHE_LINE_SIZE+`MEM_ADDR_WIDTH+`CACHE_LINE_WIDTH+MEM_TAG_WIDTH),
+        .DATAW    (1+CACHE_LINE_SIZE+MEM_REQ_SIZE_WIDTH+MEM_ADDR_WIDTH+`CACHE_LINE_WIDTH+MEM_TAG_WIDTH),
         .PASSTHRU (1 == NUM_BANKS)
     ) mem_req_sbuf (
         .clk       (clk),
         .reset     (reset),
         .valid_in  (mem_req_valid_sb),        
         .ready_in  (mem_req_ready_sb),      
-        .data_in   ({mem_req_rw_sb, mem_req_byteen_sb, mem_req_addr_sb, mem_req_data_sb, mem_req_tag_sb}),
-        .data_out  ({mem_req_rw, mem_req_byteen, mem_req_addr, mem_req_data, mem_req_tag}),        
+        .data_in   ({mem_req_rw_sb, mem_req_byteen_sb, mem_req_size_sb, mem_req_addr_sb, mem_req_data_sb, mem_req_tag_sb}),
+        .data_out  ({mem_req_rw, mem_req_byteen, mem_req_size, mem_req_addr, mem_req_data, mem_req_tag}),
         .valid_out (mem_req_valid),        
         .ready_out (mem_req_ready)
     );
@@ -239,6 +247,8 @@ module VX_cache #(
     wire [`MEM_ADDR_WIDTH-1:0]      mem_req_addr_c;
     wire [NUM_PORTS-1:0]            mem_req_pmask_c;
     wire [NUM_PORTS-1:0][WORD_SIZE-1:0] mem_req_byteen_c;
+    wire [MEM_REQ_SIZE_WIDTH-1:0]   mem_req_size_c = MEM_REQ_SIZE_WIDTH'($clog2(CACHE_LINE_SIZE));
+    // default req size is the cache line width
     wire [NUM_PORTS-1:0][WORD_SELECT_BITS-1:0] mem_req_wsel_c;
     wire [NUM_PORTS-1:0][`WORD_WIDTH-1:0] mem_req_data_c;
     wire [MEM_TAG_IN_WIDTH-1:0]     mem_req_tag_c;
@@ -273,6 +283,7 @@ module VX_cache #(
             .core_req_valid_in  (core_req_valid),
             .core_req_rw_in     (core_req_rw),
             .core_req_byteen_in (core_req_byteen),
+            .core_req_size_in   (core_req_size),
             .core_req_addr_in   (core_req_addr),
             .core_req_data_in   (core_req_data),        
             .core_req_tag_in    (core_req_tag),
@@ -307,6 +318,7 @@ module VX_cache #(
             .mem_req_addr_in    (mem_req_addr_c),
             .mem_req_pmask_in   (mem_req_pmask_c),
             .mem_req_byteen_in  (mem_req_byteen_c),
+            .mem_req_size_in    (mem_req_size_c),
             .mem_req_wsel_in    (mem_req_wsel_c),
             .mem_req_data_in    (mem_req_data_c),
             .mem_req_tag_in     (mem_req_tag_c),
@@ -318,6 +330,7 @@ module VX_cache #(
             .mem_req_rw_out     (mem_req_rw_p),
             .mem_req_pmask_out  (mem_req_pmask_p),
             .mem_req_byteen_out (mem_req_byteen_p),
+            .mem_req_size_out   (mem_req_size_sb),
             .mem_req_wsel_out   (mem_req_wsel_p),
             .mem_req_data_out   (mem_req_data_p),
             .mem_req_tag_out    (mem_req_tag_sb),
@@ -335,7 +348,8 @@ module VX_cache #(
             .mem_rsp_tag_out    (mem_rsp_tag_c),
             .mem_rsp_ready_out  (mem_rsp_ready_c)
         );
-    end else begin        
+    end else begin
+        `UNUSED_VAR(core_req_size);
         assign core_req_valid_c     = core_req_valid;
         assign core_req_rw_c        = core_req_rw;
         assign core_req_addr_c      = core_req_addr;
@@ -355,6 +369,7 @@ module VX_cache #(
         assign mem_req_rw_p         = mem_req_rw_c;
         assign mem_req_pmask_p      = mem_req_pmask_c;
         assign mem_req_byteen_p     = mem_req_byteen_c;
+        assign mem_req_size_sb      = mem_req_size_c;
         assign mem_req_wsel_p       = mem_req_wsel_c;
         assign mem_req_data_p       = mem_req_data_c;
         assign mem_req_tag_sb       = mem_req_tag_c;

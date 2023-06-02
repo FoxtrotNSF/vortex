@@ -10,10 +10,11 @@ module VX_smem_arb #(
     parameter BUFFERED_RSP  = 0,
     parameter TYPE          = "P",
 
-    parameter ADDR_WIDTH    = (32-`CLOG2(DATA_SIZE)),
+    parameter ADDR_WIDTH    = `XLEN,
     parameter DATA_WIDTH    = (8 * DATA_SIZE),
     parameter LOG_NUM_REQS  = `CLOG2(NUM_REQS),
-    parameter TAG_OUT_WIDTH = TAG_IN_WIDTH - LOG_NUM_REQS
+    parameter TAG_OUT_WIDTH = TAG_IN_WIDTH - LOG_NUM_REQS,
+    localparam DATA_lSIZE_WIDTH = $clog2($clog2(DATA_SIZE)+1)
 ) (
     input wire clk,
     input wire reset,
@@ -21,7 +22,8 @@ module VX_smem_arb #(
     // input request
     input wire [LANES-1:0]                                  req_valid_in,
     input wire [LANES-1:0]                                  req_rw_in,  
-    input wire [LANES-1:0][DATA_SIZE-1:0]                   req_byteen_in,  
+    input wire [LANES-1:0][DATA_SIZE-1:0]                   req_byteen_in,
+    input wire [LANES-1:0][DATA_lSIZE_WIDTH-1:0]            req_size_in,
     input wire [LANES-1:0][ADDR_WIDTH-1:0]                  req_addr_in, 
     input wire [LANES-1:0][DATA_WIDTH-1:0]                  req_data_in,   
     input wire [LANES-1:0][TAG_IN_WIDTH-1:0]                req_tag_in,    
@@ -30,7 +32,8 @@ module VX_smem_arb #(
     // output requests    
     output wire [NUM_REQS-1:0][LANES-1:0]                   req_valid_out, 
     output wire [NUM_REQS-1:0][LANES-1:0]                   req_rw_out,   
-    output wire [NUM_REQS-1:0][LANES-1:0][DATA_SIZE-1:0]    req_byteen_out, 
+    output wire [NUM_REQS-1:0][LANES-1:0][DATA_SIZE-1:0]    req_byteen_out,
+    output wire [NUM_REQS-1:0][LANES-1:0][DATA_lSIZE_WIDTH-1:0] req_size_out,
     output wire [NUM_REQS-1:0][LANES-1:0][ADDR_WIDTH-1:0]   req_addr_out, 
     output wire [NUM_REQS-1:0][LANES-1:0][DATA_WIDTH-1:0]   req_data_out,    
     output wire [NUM_REQS-1:0][LANES-1:0][TAG_OUT_WIDTH-1:0] req_tag_out,  
@@ -50,7 +53,7 @@ module VX_smem_arb #(
     output wire [TAG_IN_WIDTH-1:0]                          rsp_tag_out,
     input wire                                              rsp_ready_out
 );  
-    localparam REQ_DATAW = TAG_OUT_WIDTH + ADDR_WIDTH + 1 + DATA_SIZE + DATA_WIDTH;
+    localparam REQ_DATAW = TAG_OUT_WIDTH + ADDR_WIDTH + 1 + DATA_SIZE + DATA_lSIZE_WIDTH + DATA_WIDTH;
     localparam RSP_DATAW = LANES * (1 + DATA_WIDTH) + TAG_IN_WIDTH;
 
     if (NUM_REQS > 1) begin
@@ -73,7 +76,7 @@ module VX_smem_arb #(
                 .data_out (req_tag_in_w[i])
             );
 
-            assign req_data_in_merged[i] = {req_tag_in_w[i], req_addr_in[i], req_rw_in[i], req_byteen_in[i], req_data_in[i]};
+            assign req_data_in_merged[i] = {req_tag_in_w[i], req_addr_in[i], req_rw_in[i], req_byteen_in[i], req_size_in[i], req_data_in[i]};
         end
 
         VX_stream_demux #(
@@ -95,7 +98,7 @@ module VX_smem_arb #(
         
         for (genvar i = 0; i < NUM_REQS; i++) begin
             for (genvar j = 0; j < LANES; ++j) begin
-                assign {req_tag_out[i][j], req_addr_out[i][j], req_rw_out[i][j], req_byteen_out[i][j], req_data_out[i][j]} = req_data_out_merged[i][j];
+                assign {req_tag_out[i][j], req_addr_out[i][j], req_rw_out[i][j], req_byteen_out[i][j], req_size_out[i][j], req_data_out[i][j]} = req_data_out_merged[i][j];
             end
         end
 
@@ -146,6 +149,7 @@ module VX_smem_arb #(
         assign req_addr_out   = req_addr_in;
         assign req_rw_out     = req_rw_in;
         assign req_byteen_out = req_byteen_in;
+        assign req_size_out   = req_size_in;
         assign req_data_out   = req_data_in;
         assign req_ready_in   = req_ready_out;
 
