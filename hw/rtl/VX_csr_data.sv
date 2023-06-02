@@ -87,8 +87,6 @@ module VX_csr_data #(
                     end
                     `CSR_MPM_TIMEIT_RANGE_H : begin
                         csr_timeit_end_addr <= write_data;
-                        if(!cmt_to_csr_if.timeit_enable)
-                            csr_timeit_cycle <= '0;
                         cmt_to_csr_if.timeit_enable <= 1'b1;
                     end
                     default: begin
@@ -128,8 +126,10 @@ module VX_csr_data #(
                 csr_instret <= csr_instret + 64'(cmt_to_csr_if.commit_size);
             end
             for (integer i = 0; i < `NUM_WARPS; ++i) begin
-                if (cmt_to_csr_if.timeit_enable)
-                    csr_timeit_cycle[i] <= csr_timeit_cycle[i] + 64'(cmt_to_csr_if.timeit_active[i]);
+                if(write_enable && (write_addr == `CSR_MPM_TIMEIT_RANGE_H) && !cmt_to_csr_if.timeit_enable)
+                    csr_timeit_cycle[i] <= '0;
+                else if (cmt_to_csr_if.timeit_enable && cmt_to_csr_if.timeit_active[i])
+                    csr_timeit_cycle[i] <= csr_timeit_cycle[i] + 1;
             end
         end
     end
