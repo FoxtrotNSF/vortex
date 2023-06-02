@@ -1,9 +1,6 @@
-//
-// Created by noic on 09/05/23.
-//
-
 #ifndef VORTEX_VX_UART_H
 #define VORTEX_VX_UART_H
+#include <inttypes.h>
 
 #define UART_MODULE_ADDR    0xFF000000
 #define DATA_BITS   8
@@ -16,9 +13,9 @@
 typedef struct __attribute__((packed)) {
     unsigned reset_rx_fifo : 1;
     unsigned reset_tx_fifo : 1;
-    unsigned reserved_2 : 2;
+    unsigned reserved_1 : 2;
     unsigned enable_intr : 1;
-    unsigned reserved_1 : 27;
+    unsigned reserved_2 : 27;
 } uart_ctrl_t;
 
 typedef struct __attribute__((packed)) {
@@ -42,9 +39,18 @@ typedef struct __attribute__((packed)) {
 //static_assert(sizeof(uart_ctrl_t)   == sizeof(unsigned int));
 //static_assert(sizeof(uart_fifo_t)   == sizeof(unsigned int));
 
-static volatile uart_ctrl_t* UART_CTRL     = (uart_ctrl_t*) UART_CTRL_ADDR;
-static volatile uart_status_t* UART_STAT   = (uart_status_t*) UART_STAT_ADDR;
-static volatile uart_fifo_t* UART_RX       = (uart_fifo_t*) UART_RX_ADDR;
-static volatile uart_fifo_t* UART_TX       = (uart_fifo_t*) UART_TX_ADDR;
+void uart_init(unsigned int enable_intr);
+
+int uart_write(unsigned char data);
+
+void uart_blocking_write(unsigned char data);
+
+unsigned char uart_read();
+
+void uart_flush();
+
+int uart_available();
+
+
 
 #endif //VORTEX_VX_UART_H
