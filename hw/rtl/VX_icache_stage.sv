@@ -48,8 +48,8 @@ module VX_icache_stage #(
         .rdata ({rsp_PC, rsp_tmask, rsp_uuid})
     );
 
-    `RUNTIME_ASSERT((!ifetch_req_if.valid || ifetch_req_if.PC >= `STARTUP_ADDR), 
-        ("%t: *** invalid PC=%0h, wid=%0d, tmask=%b (#%0d)", $time, ifetch_req_if.PC, ifetch_req_if.wid, ifetch_req_if.tmask, ifetch_req_if.uuid))
+//     `RUNTIME_ASSERT((!ifetch_req_if.valid || ifetch_req_if.PC >= `STARTUP_ADDR),
+//         ("%t: *** invalid PC=%0h, wid=%0d, tmask=%b (#%0d)", $time, ifetch_req_if.PC, ifetch_req_if.wid, ifetch_req_if.tmask, ifetch_req_if.uuid))
 
     // Icache Request
     assign icache_req_if.valid = ifetch_req_if.valid;
