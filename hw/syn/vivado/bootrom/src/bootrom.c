@@ -4,6 +4,7 @@
 #include "vx_timeit.h"
 #include "vx_uart.h"
 #include "vx_spawn.h"
+#include "vx_intrinsics.h"
 
 typedef void (*user_tasks_cb_t)(unsigned);
 
@@ -19,7 +20,7 @@ void mesure_user_kernel(context_t * ctx, vx_spawn_kernel_cb kernel_entry, void* 
     set_time_it(start, end);
     vx_spawn_kernel(ctx, (vx_spawn_kernel_cb)kernel_entry, arg);
     stop_timeit();
-    vx_printf("Completed in %llu cycles\n", read_global_time_it());
+    vx_printf("Completed in %llu cycles\n", read_time_it());
     vx_printf("start: %llu\n", read_start_time());
     vx_printf("end: %llu\n", read_end_time());
 }
@@ -44,7 +45,7 @@ void mesure_user_warps(unsigned size, user_tasks_cb_t kernel_entry, void* start,
     vx_wspawn(size, launch_tasks);
     launch_tasks();
     stop_timeit();
-    vx_printf("Completed in %llu cycles\n", read_global_time_it());
+    vx_printf("Completed in %llu cycles\n", read_time_it());
     vx_printf("start: %llu\n", read_start_time());
     vx_printf("end: %llu\n", read_end_time());
 }
