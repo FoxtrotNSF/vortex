@@ -2,76 +2,98 @@
 #include <VX_config.h>
 #include "vx_print.h"
 #include "vx_timeit.h"
+#include "vx_uart.h"
 #include "vx_spawn.h"
 
-#define MAX_WARPS 64
-#define MAX_THDS_PER_WARPS 16
+typedef void (*user_tasks_cb_t)(unsigned);
 
-typedef struct{
-    int valid;
-    uint32_t thd_id[MAX_THDS_PER_WARPS];
-    uint64_t time;
-} task_nfo_t;
+unsigned num_warps_to_launch;
+user_tasks_cb_t tasks_to_launch;
 
-void save_ex_time(int task_id, void* arg){
-    task_nfo_t* result = (task_nfo_t*) arg;
-    uint32_t warp_thread_id, warp_id;
-    __asm__ __volatile__ ("csrr %0, %1" : "=r"(warp_id) : "i"(CSR_GWID));
-    __asm__ __volatile__ ("csrr %0, %1" : "=r"(warp_thread_id) : "i"(CSR_WTID));
-    result[warp_id].thd_id[warp_thread_id] = task_id;
-    if(warp_thread_id == 0) {
-        result[warp_id].valid = 1;
-        result[warp_id].time = read_time_it();
-    }
-}
-
-void mesure_user_kernel(int size, void(*user_kernel)(int, void*), void* arg, void* start, void* end){
-    task_nfo_t time_results[MAX_WARPS];
-    uint32_t num_thds_per_warps;
-    __asm__ __volatile__ ("csrr %0, %1" : "=r"(num_thds_per_warps) : "i"(CSR_NT));
-
-    vx_printf("Launching %d threads \n", size);
+void mesure_user_kernel(context_t * ctx, vx_spawn_kernel_cb kernel_entry, void* arg, void* start, void* end){
+    vx_printf("Kernel dims:\n");
+    vx_printf("x: %d * %d (+ %d)\n", ctx->num_groups[0], ctx->local_size[0], ctx->global_offset[0]);
+    vx_printf("y: %d * %d (+ %d)\n", ctx->num_groups[1], ctx->local_size[1], ctx->global_offset[1]);
+    vx_printf("z: %d * %d (+ %d)\n", ctx->num_groups[2], ctx->local_size[2], ctx->global_offset[2]);
+    vx_printf("Launching at %X\n", kernel_entry);
     set_time_it(start, end);
-    vx_spawn_tasks(size, (vx_spawn_tasks_cb)user_kernel, arg);
+    vx_spawn_kernel(ctx, (vx_spawn_kernel_cb)kernel_entry, arg);
     stop_timeit();
-
-    vx_printf("Saving results \n");
-    int a = size;
-    while(a --> 0) time_results[a].valid = 0;
-    vx_spawn_tasks(size, (vx_spawn_tasks_cb)save_ex_time, time_results);
-    while(size --> 0){
-        if(time_results[size].valid){
-            vx_printf("warp %d : [", size);
-            int i = num_thds_per_warps;
-            while(i --> 0) vx_printf("%d%c", time_results[size].thd_id[i], i ? ',' : ']');
-            vx_printf(", %llu cycles\n", time_results[size].time);
-        }
-    }
+    vx_printf("Completed in %llu cycles\n", read_global_time_it());
+    vx_printf("start: %llu\n", read_start_time());
+    vx_printf("end: %llu\n", read_end_time());
 }
 
-void dummy_function(int thd_id, void* arg) {
-    __asm__ __volatile__("kernel_start: .global kernel_start":);
-    int *result = (int *) arg;
-    int a = thd_id;
-    if (thd_id > 2) {
-        a = thd_id * 3;
-    }
-    result[thd_id] = a;
-    __asm__ __volatile__("kernel_end: .global kernel_end":);
+void launch_tasks(){
+    vx_tmc(-1); // launch all threads
+    tasks_to_launch(num_warps_to_launch);
+    vx_tmc(vx_warp_id() == 0); // stop all warps excepted 0
 }
+
+void mesure_user_warps(unsigned size, user_tasks_cb_t kernel_entry, void* start, void* end){
+    int wid = vx_warp_id();
+    int NW = vx_num_warps();
+    if(size > NW){
+        vx_printf("Impossible to launch more than %d warps", NW);
+        return;
+    }
+    tasks_to_launch = kernel_entry;
+    num_warps_to_launch = size;
+    set_time_it(start, end);
+    vx_printf("Launching %d warps at %X\n", size, kernel_entry);
+    vx_wspawn(size, launch_tasks);
+    launch_tasks();
+    stop_timeit();
+    vx_printf("Completed in %llu cycles\n", read_global_time_it());
+    vx_printf("start: %llu\n", read_start_time());
+    vx_printf("end: %llu\n", read_end_time());
+}
+
 
 void main() {
-    vx_printf("hello world!\n");
-    int result[8];
-    extern uint8_t function_end __asm__("kernel_end");
-    extern uint8_t function_start __asm__("kernel_start");
-    mesure_user_kernel(8, dummy_function, result, &function_start, &function_end);
-    vx_printf("results :\n");
-    for(int i =0; i < 8; i++) vx_printf("%d\n", result[i]);
-//    for(int i = 0; i < sizeof(s_data); i++) { while (!send_uart(s_data[i])); }
-//    lab_1:
-//    while(! uart_available());
-//    if(uart_read_data() != 's') goto lab_1;
-//    for(int i = 0; i < sizeof(s_data_2); i++) { while (!send_uart(s_data_2[i])); }
-//    goto lab_1;
+    vx_printf("ready\n");
+    lab_1:
+    vx_printf("\\\n");
+    char command = uart_blocking_read();
+    switch(command){
+        case 'u': // upload
+        {
+            uint32_t size = uart_blocking_read_unsigned();
+            uint32_t addr = uart_blocking_read_unsigned();
+            for (uint32_t p = addr; p < addr + size; p++) (*(char *) p) = uart_blocking_read();
+        }
+            break;
+        case 'r': // run
+        {
+            void* func = (void*) uart_blocking_read_unsigned();
+            char is_kernel = uart_blocking_read();
+            void* start = (void*) uart_blocking_read_unsigned();
+            void* end   = (void*) uart_blocking_read_unsigned();
+            if(is_kernel){
+                void* arg = (void*) uart_blocking_read_unsigned();
+                char x = uart_blocking_read();
+                char y = uart_blocking_read();
+                char z = uart_blocking_read();
+                context_t ctx = {
+                        .local_size = {1, 1, 1},
+                        .num_groups = {x, y, z},
+                        .global_offset = {0, 0, 0},
+                        .work_dim = 0
+                };
+                mesure_user_kernel(&ctx, (vx_spawn_kernel_cb) func, arg, start, end);
+            } else {
+                char size = uart_blocking_read();
+                mesure_user_warps(size, func, start, end);
+            }
+
+        }
+            break;
+        case 'd': //dump
+        {
+            uint32_t size = uart_blocking_read_unsigned();
+            uint32_t addr = uart_blocking_read_unsigned();
+            for (uint32_t p = addr; p < addr + size; p++) uart_blocking_write(*(char *) p);
+        }
+    }
+    goto lab_1;
 }
