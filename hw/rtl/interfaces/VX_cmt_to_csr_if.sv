@@ -9,7 +9,7 @@ interface VX_cmt_to_csr_if ();
     wire [31:0]                         timeit_start_addr;
     wire [31:0]                         timeit_end_addr;
     reg                                 timeit_enable;
-    reg [`NW_BITS-1:0]                  timeit_active;
+    reg [`NUM_WARPS-1:0]                timeit_active;
     initial                             timeit_enable = 1'b0;
     initial                             timeit_active = '0;
 `ifdef EXT_F_ENABLE
