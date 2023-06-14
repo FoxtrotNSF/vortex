@@ -130,16 +130,13 @@ module VX_commit #(
     );
 
     always_ff @(posedge clk) begin
-        if(!cmt_to_csr_if.timeit_enable) cmt_to_csr_if.timeit_active <= '0;
-        else begin
-            for (integer i = 0; i < $bits(commit_valid); ++i) begin
-                for (integer w = 0; w < `NUM_WARPS; ++w) begin
-                    if(commit_valid[i] && (commit_wid[i] == `NW_BITS'(w))) begin
-                        if(commit_pcs[i] == cmt_to_csr_if.timeit_start_addr)
-                            cmt_to_csr_if.timeit_active[w] <= 1'b1;
-                        if(commit_pcs[i] == cmt_to_csr_if.timeit_end_addr)
-                            cmt_to_csr_if.timeit_active[w] <= 1'b0;
-                    end
+        for (integer i = 0; i < $bits(commit_valid); ++i) begin
+            for (integer w = 0; w < `NUM_WARPS; ++w) begin
+                if(commit_valid[i] && (commit_wid[i] == `NW_BITS'(w))) begin
+                    if(commit_pcs[i] == cmt_to_csr_if.timeit_start_addr)
+                        cmt_to_csr_if.timeit_active[w] <= cmt_to_csr_if.timeit_enable;
+                    if(commit_pcs[i] == cmt_to_csr_if.timeit_end_addr)
+                        cmt_to_csr_if.timeit_active[w] <= 1'b0;
                 end
             end
         end
