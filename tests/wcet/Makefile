@@ -6,6 +6,7 @@ VORTEX_RT_PATH ?= $(realpath ../../runtime)
 VORTEX_HW_PATH ?= $(realpath ../../hw)
 
 OPTS ?= -n16
+USE_GCC ?= 1
 ifndef USE_GCC
 	VX_CC  = ${LLVM_PREFIX}/bin/clang
 	VX_CXX = ${LLVM_PREFIX}/bin/clang++
@@ -43,10 +44,7 @@ kernel.elf: $(VX_SRCS)
 
 clean:
 	rm -rf $(PROJECT) *.o .depend
-
-clean-all: clean
 	rm -rf *.elf *.bin *.dump *.log
-	rm -rf ~/.cache/pocl/*
 
 ifneq ($(MAKECMDGOALS),clean)
     -include .depend
