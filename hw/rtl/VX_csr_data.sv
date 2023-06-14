@@ -51,9 +51,10 @@ module VX_csr_data #(
     reg [`CSR_WIDTH-1:0] csr_pmpaddr [0:0];
     reg [63:0] csr_cycle /* verilator public */;
     reg [63:0] csr_instret /* verilator public */;
-    reg [`NW_BITS-1:0][63:0] csr_timeit_cycle;
+    reg [63:0] csr_timeit_global_start_cycle, csr_timeit_global_end_cycle;
     reg [31:0] csr_timeit_start_addr;
     reg [31:0] csr_timeit_end_addr;
+    reg timeit_has_started;
     
     reg [`NUM_WARPS-1:0][`INST_FRM_BITS+`FFLAGS_BITS-1:0] fcsr;
 
@@ -81,11 +82,11 @@ module VX_csr_data #(
                     `CSR_MEPC:     csr_mepc       <= write_data[`CSR_WIDTH-1:0];
                     `CSR_PMPCFG0:  csr_pmpcfg[0]  <= write_data[`CSR_WIDTH-1:0];
                     `CSR_PMPADDR0: csr_pmpaddr[0] <= write_data[`CSR_WIDTH-1:0];
-                    `CSR_MPM_TIMEIT_RANGE_L : begin
+                    `CSR_TIMEIT_RANGE_L : begin
                         csr_timeit_start_addr <= write_data;
                         cmt_to_csr_if.timeit_enable <= 1'b0;
                     end
-                    `CSR_MPM_TIMEIT_RANGE_H : begin
+                    `CSR_TIMEIT_RANGE_H : begin
                         csr_timeit_end_addr <= write_data;
                         cmt_to_csr_if.timeit_enable <= 1'b1;
                     end
@@ -125,11 +126,15 @@ module VX_csr_data #(
             if (cmt_to_csr_if.valid) begin
                 csr_instret <= csr_instret + 64'(cmt_to_csr_if.commit_size);
             end
-            for (integer i = 0; i < `NUM_WARPS; ++i) begin
-                if(write_enable && (write_addr == `CSR_MPM_TIMEIT_RANGE_H) && !cmt_to_csr_if.timeit_enable)
-                    csr_timeit_cycle[i] <= '0;
-                else if (cmt_to_csr_if.timeit_enable && cmt_to_csr_if.timeit_active[i])
-                    csr_timeit_cycle[i] <= csr_timeit_cycle[i] + 1;
+            if (cmt_to_csr_if.timeit_enable) begin
+                if(|cmt_to_csr_if.timeit_active) begin
+                    csr_timeit_global_end_cycle <= csr_cycle;
+                    timeit_has_started <= 1'b1;
+                end else if(!timeit_has_started) begin
+                    csr_timeit_global_start_cycle <= csr_cycle;
+                end
+            end else begin
+                timeit_has_started <= 1'b0;
             end
         end
     end
@@ -164,8 +169,14 @@ module VX_csr_data #(
             `CSR_MINSTRET   : read_data_r = csr_instret[31:0];
             `CSR_MINSTRET_H : read_data_r = 32'(csr_instret[`PERF_CTR_BITS-1:32]);
 
-            `CSR_MPM_TIMEIT_CYCLES : read_data_r = csr_timeit_cycle[read_wid][31:0];
-            `CSR_MPM_TIMEIT_CYCLES_H : read_data_r = 32'(csr_timeit_cycle[read_wid][63:32]);
+            `CSR_TIMEIT_RANGE_L : read_data_r = csr_timeit_start_addr;
+            `CSR_TIMEIT_RANGE_H : read_data_r = csr_timeit_end_addr;
+
+            `CSR_TIMEIT_GLOBAL_CYCLES_START_L : read_data_r = csr_timeit_global_start_cycle[31:0];
+            `CSR_TIMEIT_GLOBAL_CYCLES_START_H : read_data_r = 32'(csr_timeit_global_start_cycle[63:32]);
+
+            `CSR_TIMEIT_GLOBAL_CYCLES_END_L : read_data_r = csr_timeit_global_end_cycle[31:0];
+            `CSR_TIMEIT_GLOBAL_CYCLES_END_H : read_data_r = 32'(csr_timeit_global_end_cycle[63:32]);
 
         `ifdef PERF_ENABLE
             // PERF: pipeline

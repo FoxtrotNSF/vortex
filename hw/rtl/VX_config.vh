@@ -217,10 +217,14 @@
 `define CSR_MPM_TEX_LAT_H           12'hB9C
 
 // PERF: timeit
-`define CSR_MPM_TIMEIT_CYCLES       12'hB1D     // counter for clks in timeit
-`define CSR_MPM_TIMEIT_CYCLES_H     12'hB9D
-`define CSR_MPM_TIMEIT_RANGE_L      12'hB1E     // start
-`define CSR_MPM_TIMEIT_RANGE_H      12'hB9E     // end
+`define CSR_TIMEIT_RANGE_L      12'h7C0     // start
+`define CSR_TIMEIT_RANGE_H      12'hBC0     // end
+
+`define CSR_TIMEIT_GLOBAL_CYCLES_START_L   12'hFC3     // counter for clks in timeit
+`define CSR_TIMEIT_GLOBAL_CYCLES_START_H   12'hFC4
+
+`define CSR_TIMEIT_GLOBAL_CYCLES_END_L     12'hFC5     // counter for clks in timeit
+`define CSR_TIMEIT_GLOBAL_CYCLES_END_H     12'hFC6
 
 // Machine Information Registers
 `define CSR_MVENDORID   12'hF11
