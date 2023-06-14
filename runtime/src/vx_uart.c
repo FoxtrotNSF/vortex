@@ -43,10 +43,21 @@ int uart_available(){
     return uart_stat.rx_fifo_valid;
 }
 
-unsigned char uart_read(){
+char uart_read(){
     uart_fifo_t uart_rx;
     read_reg(UART_RX_ADDR, &uart_rx);
     return uart_rx.data;
+}
+
+char uart_blocking_read(){
+    while(!uart_available());
+    return uart_read();
+}
+
+uint32_t uart_blocking_read_unsigned(){
+    char data[sizeof(uint32_t)];
+    for(int i = 0; i < sizeof(uint32_t); i++) data[i] = uart_blocking_read();
+    return *(uint32_t*) &data;
 }
 
 #ifdef USE_UART_FOR_VX_PRINT

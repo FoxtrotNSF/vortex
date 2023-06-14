@@ -31,7 +31,7 @@ typedef struct __attribute__((packed)) {
 } uart_status_t;
 
 typedef struct __attribute__((packed)) {
-    unsigned char data;
+    char data;
     unsigned reserved : 24;
 } uart_fifo_t;
 
@@ -45,12 +45,14 @@ int uart_write(unsigned char data);
 
 void uart_blocking_write(unsigned char data);
 
-unsigned char uart_read();
+char uart_read();
 
 void uart_flush();
 
 int uart_available();
 
+char uart_blocking_read();
 
+uint32_t uart_blocking_read_unsigned();
 
 #endif //VORTEX_VX_UART_H
