@@ -45,7 +45,7 @@ SRCS = kernel.cl
 CLEAN_ELF_C = $(shell echo $(K_CFLAGS))
 CLEAN_ELF_LD = $(shell echo "-Wl,-Bstatic,-T$(VORTEX_RT_PATH)/linker/vx_link$(XLEN).ld -Wl,--gc-sections,--defsym=_kernel_entry=_pocl_kernel_$(PROJECT)_workgroup_fast -e _kernel_entry -lm")
 
-all: kernel.pocl
+all: kernel_clean.dump
 
 kernel.pocl: kernel.cl
 	LLVM_PREFIX=$(LLVM_PREFIX) POCL_KERNEL_CACHE=1 POCL_CACHE_DIR=$(BUILD_DIR) POCL_LEAVE_KERNEL_COMPILER_TEMP_FILES=1 POCL_DEBUG=all LD_LIBRARY_PATH=$(LLVM_PREFIX)/lib:$(POCL_CC_PATH)/lib $(POCL_CC_PATH)/bin/poclcc -LLCFLAGS $(K_LLCFLAGS) -CFLAGS $(K_CFLAGS) -LDFLAGS $(K_LDFLAGS) -o kernel.pocl kernel.cl

@@ -7,24 +7,30 @@ VORTEX_HW_PATH ?= $(realpath ../../hw)
 
 OPTS ?= -n16
 USE_GCC ?= 1
+#DUMP_GCC ?= 1
 ifndef USE_GCC
 	VX_CC  = ${LLVM_PREFIX}/bin/clang
 	VX_CXX = ${LLVM_PREFIX}/bin/clang++
-	VX_DP  = ${LLVM_PREFIX}/bin/llvm-objdump
 	VX_CP  = ${LLVM_PREFIX}/bin/llvm-objcopy
 
     VX_CFLAGS += -Xclang -target-feature -Xclang +vortex
     VX_CFLAGS += --sysroot=${SYSROOT} --gcc-toolchain=${RISCV_TOOLCHAIN_PATH}
-	VX_DPFLAGS = -arch=riscv32 -mcpu=generic-rv32 -mattr=+m,+f -mattr=+vortex
 else
 	VX_CC  = $(RISCV_TOOLCHAIN_PATH)/bin/riscv32-unknown-elf-gcc
 	VX_CXX = $(RISCV_TOOLCHAIN_PATH)/bin/riscv32-unknown-elf-g++
-	VX_DP  = $(RISCV_TOOLCHAIN_PATH)/bin/riscv32-unknown-elf-objdump
 	VX_CP  = $(RISCV_TOOLCHAIN_PATH)/bin/riscv32-unknown-elf-objcopy
 endif
+
+ifndef DUMP_GCC
+	VX_DP  = ${LLVM_PREFIX}/bin/llvm-objdump
+	VX_DPFLAGS = -arch=riscv32 -mcpu=generic-rv32 -mattr=+m,+f -mattr=+vortex
+else
+	VX_DP  = $(RISCV_TOOLCHAIN_PATH)/bin/riscv32-unknown-elf-objdump
+endif
+
 VX_CFLAGS += -O3 -march=rv32imf -mabi=ilp32f -fno-exceptions -ffreestanding -nostartfiles -fdata-sections -ffunction-sections
 VX_CFLAGS += -I${VORTEX_HW_PATH} -I${VORTEX_RT_PATH}/include
-VX_LDFLAGS += -Wl,-Bstatic,-T,$(VORTEX_RT_PATH)/linker/vx_link$(XLEN).ld -Wl,--gc-sections,--defsym=_kernel_entry=$(PROJECT) -e _kernel_entry
+VX_LDFLAGS += -Wl,-Bstatic,-T,$(VORTEX_RT_PATH)/linker/vx_link$(XLEN).ld -Wl,--gc-sections,--defsym=__code_start=0x00001000,--defsym=_kernel_entry=$(PROJECT) -e _kernel_entry
 VX_CFLAGS += $(CONFIGS)
 
 VX_SRCS = kernel.c
