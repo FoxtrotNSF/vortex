@@ -343,7 +343,7 @@ module VX_mem_unit # (
         .req_rw_in      ({dcache_mem_req_if.rw,     icache_mem_req_if.rw}),
         .req_byteen_in  ({dcache_mem_req_if.byteen, icache_mem_req_if.byteen}),
         .req_size_in    ({dcache_mem_req_if.size,   icache_mem_req_if.size}),
-        .req_addr_in    ({dcache_mem_req_if.addr,   `LEXPEND(icache_mem_req_if.addr,`XLEN)}), // The icache request is expanded to normal size here
+        .req_addr_in    ({dcache_mem_req_if.addr,   `TO_FULL_ADDR(icache_mem_req_if.addr)}), // The icache request is expanded to normal size here
         .req_data_in    ({dcache_mem_req_if.data,   icache_mem_req_if.data}),  
         .req_tag_in     ({dcache_mem_req_if.tag,    icache_mem_req_tag}),  
         .req_ready_in   ({dcache_mem_req_if.ready,  icache_mem_req_if.ready}),
