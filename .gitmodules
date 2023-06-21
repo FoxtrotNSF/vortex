@@ -15,4 +15,4 @@
 	url = git@github.com:vortexgpgpu/bin2coe.git
 [submodule "tests/wcet/scripts/PyRISCV-Disas"]
 	path = tests/wcet/scripts/PyRISCV-Disas
-	url = git@github.com:mbaharan/PyRISCV-Disas.git
+	url = git@github.com:N-Crouzet/PyRISCV-Disas.git
