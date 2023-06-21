@@ -16,13 +16,11 @@ void mesure_user_kernel(context_t * ctx, vx_spawn_kernel_cb kernel_entry, void* 
     vx_printf("x: %d * %d (+ %d)\n", ctx->num_groups[0], ctx->local_size[0], ctx->global_offset[0]);
     vx_printf("y: %d * %d (+ %d)\n", ctx->num_groups[1], ctx->local_size[1], ctx->global_offset[1]);
     vx_printf("z: %d * %d (+ %d)\n", ctx->num_groups[2], ctx->local_size[2], ctx->global_offset[2]);
-    vx_printf("Launching at %X\n", kernel_entry);
+    vx_printf("Launching at 0x%08X\n", kernel_entry);
     set_time_it(start, end);
     vx_spawn_kernel(ctx, (vx_spawn_kernel_cb)kernel_entry, arg);
     stop_timeit();
     vx_printf("Completed in %llu cycles\n", read_time_it());
-    vx_printf("start: %llu\n", read_start_time());
-    vx_printf("end: %llu\n", read_end_time());
 }
 
 void launch_tasks(){
@@ -41,13 +39,11 @@ void mesure_user_warps(unsigned size, user_tasks_cb_t kernel_entry, void* start,
     tasks_to_launch = kernel_entry;
     num_warps_to_launch = size;
     set_time_it(start, end);
-    vx_printf("Launching %d warps at %X\n", size, kernel_entry);
+    vx_printf("Launching %d warps at 0x%08X\n", size, kernel_entry);
     vx_wspawn(size, launch_tasks);
     launch_tasks();
     stop_timeit();
     vx_printf("Completed in %llu cycles\n", read_time_it());
-    vx_printf("start: %llu\n", read_start_time());
-    vx_printf("end: %llu\n", read_end_time());
 }
 
 
@@ -67,10 +63,10 @@ void main() {
         case 'r': // run
         {
             void* func = (void*) uart_blocking_read_unsigned();
-            char is_kernel = uart_blocking_read();
+            char is_opencl = uart_blocking_read();
             void* start = (void*) uart_blocking_read_unsigned();
             void* end   = (void*) uart_blocking_read_unsigned();
-            if(is_kernel){
+            if(is_opencl){
                 void* arg = (void*) uart_blocking_read_unsigned();
                 char x = uart_blocking_read();
                 char y = uart_blocking_read();
