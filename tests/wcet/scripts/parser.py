@@ -1,5 +1,6 @@
 import re
 import sys
+import argparse
 
 instr_print_sz = 10
 max_instr_per_blk = 100
@@ -159,12 +160,22 @@ def print_tab(stage_occupancy, max_instrs, asm_names):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        print("expected .dump file")
-        exit(1)
-    dump_file = sys.argv[1]
-    trace_file = 0 if len(sys.argv) <= 2 else sys.argv[2]
-    asm_names = parse_dump(dump_file)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--dump",
+                        action='append',
+                        required=True,
+                        help=""".dump files of the current executed code (to name instructions)""")
+
+    parser.add_argument("-t", "--trace",
+                        required=False,
+                        help="""trace file to analyze, if not provided the default is stdin""")
+
+    args = parser.parse_args()
+
+    trace_file = 0 if args.trace is None else args.trace
+    asm_names = {}
+    for dump_file in args.dump:
+        asm_names |= parse_dump(dump_file)
     stages, max_instrs = get_stages(trace_file)
     for k,m in max_instrs.items():
         if m == 0:
