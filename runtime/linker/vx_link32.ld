@@ -9,7 +9,7 @@ OUTPUT_ARCH(riscv)
 ENTRY(_start)
 SECTIONS
 {
-PROVIDE(__code_start  = 0x00000000);
+PROVIDE(__code_start  = 0x00001000);
   . = __code_start;
   .interp         : { *(.interp) }
   .note.gnu.build-id  : { *(.note.gnu.build-id) }

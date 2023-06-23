@@ -43,12 +43,6 @@ _start:
   # Run global initialization functions
   call    __libc_init_array
 
-#ifdef USE_UART_FOR_VX_PRINT
-  # Initialize UART if needed
-  mv a0, zero
-  call uart_init
-#endif
-
   # call main program routine
   call    main
 

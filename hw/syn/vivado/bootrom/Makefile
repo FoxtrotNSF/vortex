@@ -7,7 +7,7 @@ VORTEX_HW_PATH ?= $(realpath ../../..)
 
 OPTS ?= -n16
 USE_GCC ?= 1
-#DUMP_GCC ?= 1
+DUMP_GCC ?= 1
 ifndef USE_GCC
 	VX_CC  = ${LLVM_PREFIX}/bin/clang
 	VX_CXX = ${LLVM_PREFIX}/bin/clang++
@@ -28,12 +28,12 @@ else
 	VX_DP  = $(RISCV_TOOLCHAIN_PATH)/bin/riscv32-unknown-elf-objdump
 endif
 
-VX_CFLAGS += -Os -march=rv32imf -mabi=ilp32f -fno-exceptions -ffreestanding -nostartfiles -fdata-sections -ffunction-sections
-VX_CFLAGS += -I${VORTEX_HW_PATH} -I${VORTEX_RT_PATH}/include
-VX_LDFLAGS += -Wl,-Bstatic,-T,$(VORTEX_RT_PATH)/linker/vx_link$(XLEN).ld -Wl,--gc-sections,--defsym=__code_start=0x80000000 $(VORTEX_RT_PATH)/libvortexrt.a
+VX_CFLAGS += -Os -march=rv32imf -mabi=ilp32f -fno-exceptions -ffreestanding -nostartfiles -fdata-sections -ffunction-sections  -DUSE_UART_FOR_VX_PRINT
+VX_CFLAGS += -I${VORTEX_HW_PATH} -I${VORTEX_RT_PATH}/include -I ./src
+VX_LDFLAGS += -Wl,-Bstatic,-T,./ldscript.ld -L$(VORTEX_RT_PATH)/linker/ -Wl,--gc-sections $(VORTEX_RT_PATH)/libvortexrt.a
 VX_CFLAGS += $(CONFIGS)
 
-VX_SRCS = src/bootrom.c
+VX_SRCS = src/bootrom.c src/vx_uart.c src/vx_timeit.c
 
 PROJECT = bootrom
 

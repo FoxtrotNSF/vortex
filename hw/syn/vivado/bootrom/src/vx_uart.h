@@ -2,12 +2,13 @@
 #define VORTEX_VX_UART_H
 #include <inttypes.h>
 
-#define UART_MODULE_ADDR    0xFF000000
+extern uint8_t UART_MODULE_ADDR;
+#define UART_ADDR ((uintptr_t) &UART_MODULE_ADDR)
 #define DATA_BITS   8
-#define UART_RX_ADDR     (UART_MODULE_ADDR + 0x00)
-#define UART_TX_ADDR     (UART_MODULE_ADDR + 0x04)
-#define UART_STAT_ADDR   (UART_MODULE_ADDR + 0x08)
-#define UART_CTRL_ADDR   (UART_MODULE_ADDR + 0x0C)
+#define UART_RX_ADDR     (UART_ADDR + 0x00)
+#define UART_TX_ADDR     (UART_ADDR + 0x04)
+#define UART_STAT_ADDR   (UART_ADDR + 0x08)
+#define UART_CTRL_ADDR   (UART_ADDR + 0x0C)
 
 
 typedef struct __attribute__((packed)) {
