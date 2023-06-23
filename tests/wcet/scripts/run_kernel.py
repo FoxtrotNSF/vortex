@@ -2,6 +2,7 @@ from intelhex import IntelHex
 from elftools.elf.elffile import ELFFile
 import argparse
 import sys
+from math import prod
 
 
 def extract_elf(elf_object):
@@ -56,7 +57,7 @@ def run_kernel(addr, start, end, dim, arg, is_opencl):
         sys.stdout.buffer.write(dim[1].to_bytes(1, 'little'))
         sys.stdout.buffer.write(dim[2].to_bytes(1, 'little'))
     else:
-        sys.stdout.buffer.write(int(dim).to_bytes(1, 'little'))
+        sys.stdout.buffer.write(prod(dim).to_bytes(1, 'little'))
 
 
 def align(addr, size=4):
@@ -106,57 +107,36 @@ class SetArg(argparse.Action):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-k", "--kernel",
-                        required=True,
-                        help="""Input .ELF file to process""")
+    parser.add_argument("-k", "--kernel", required=True, help="""Input .ELF file to process""")
 
-    parser.add_argument("--opencl",
-                        action='store_true',
-                        required=False,
-                        help="""this is an openCL kernel""")
+    parser.add_argument("--opencl", action='store_true', help="""This is an OpenCL kernel""")
 
-    parser.add_argument("-d", "--dim",
-                        required=True,
-                        nargs='+',
-                        type=int,
-                        help="""dimensions of the kernel to run""")
+    parser.add_argument("-d", "--dim", required=True, help="""Set the dimensions of the kernel to run""",
+                        nargs='+', type=int)
 
-    parser.add_argument("-a", "--align",
-                        action=SetAlign,
-                        nargs="?",
-                        required=False,
-                        help="""argument""")
+    parser.add_argument("-a", "--align", help="""Align the next argument, -a = 4B, -aa = 8B, -aaa = 16""",
+                        action=SetAlign, nargs="?")
 
-    parser.add_argument("-f", "--file_arg",
-                        action=SetArg,
-                        nargs="+",
-                        required=False,
-                        help="""argument""")
+    parser.add_argument("-f", "--file_arg", help="""Load a file and place it in memory""",
+                        action=SetArg, nargs="+")
 
-    parser.add_argument("-i", "--integer_arg",
-                        action=SetArg,
-                        nargs="+",
-                        required=False,
-                        help="""argument""")
+    parser.add_argument("-i", "--integer_arg", help="""Send an argument in form of a signed integer (4B)""",
+                        action=SetArg, nargs="+")
 
-    parser.add_argument("-s", "--string_arg",
-                        action=SetArg,
-                        nargs="+",
-                        required=False,
-                        help="""argument""")
+    parser.add_argument("-s", "--string_arg", help="""Places a string in memory""",
+                        action=SetArg, nargs="+")
 
-    parser.add_argument("-o", "--output_arg",
-                        action=SetArg,
-                        nargs="+",
-                        required=False,
-                        help="""argument""")
+    parser.add_argument("-o", "--output_arg", help="""Reserves space in the device memory and reads it after \
+                                                        the execution""",
+                        action=SetArg, nargs="+")
 
     args = parser.parse_args()
     with ELFFile(open(args.kernel, 'rb')) as elf_file:
         mem_addr_k, addr_k, start_k, end_k, data_k = extract_elf(elf_file)
-    args_addr = align(mem_addr_k + send_bin(mem_addr_k, data_k), size=32)
-    args_idx_addr = align(args_addr + send_bin(args_addr, args_data), size=4)
-    free_dt = send_bin(args_idx_addr, b''.join(map(lambda x: (x + args_addr).to_bytes(4, 'little'), args_idx)))
+    args_addr = align(mem_addr_k + send_bin(mem_addr_k, data_k), size=32)   # send kernel
+    args_idx_addr = align(args_addr + send_bin(args_addr, args_data), size=4)   # send args
+    arg_table = b''.join(map(lambda x: (x + args_addr).to_bytes(4, 'little'), args_idx))  # build arg table
+    free_dt = send_bin(args_idx_addr, arg_table)  # send arg table
     kernel_dims = args.dim + [1] * (3 - len(args.dim))
     run_kernel(addr_k, start_k, end_k, kernel_dims, args_idx_addr, args.opencl)
     for ar, sz in output_args:
