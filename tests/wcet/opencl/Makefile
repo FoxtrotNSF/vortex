@@ -14,7 +14,7 @@ BUILD_DIR ?= $(realpath .)/build
 
 K_LLCFLAGS += "-O3 -march=riscv32 -target-abi=ilp32f -mcpu=generic-rv32 -mattr=+m,+f,+vortex -float-abi=hard -code-model=small"
 K_CFLAGS   += "-O3 --sysroot=$(SYSROOT) --gcc-toolchain=$(RISCV_TOOLCHAIN_PATH) -march=rv32imf -mabi=ilp32f -Xclang -target-feature -Xclang +vortex -I$(VORTEX_RT_PATH)/include -fno-rtti -fno-exceptions -ffreestanding -nostartfiles -fdata-sections -ffunction-sections"
-K_LDFLAGS  += "-Wl,-Bstatic,-T$(VORTEX_RT_PATH)/linker/vx_link$(XLEN).ld -Wl,--gc-sections $(VORTEX_RT_PATH)/libvortexrt.a -lm"
+K_LDFLAGS  += "-Wl,-Bstatic,-T../fpga_ld.ld -L$(VORTEX_RT_PATH)/linker/ -Wl,--gc-sections -lm"
 
 CXXFLAGS += -std=c++11 -Wall -Wextra -Wfatal-errors
 
@@ -43,7 +43,7 @@ PROJECT = test_kernel
 SRCS = kernel.cl
 
 CLEAN_ELF_C = $(shell echo $(K_CFLAGS))
-CLEAN_ELF_LD = $(shell echo "-Wl,-Bstatic,-T$(VORTEX_RT_PATH)/linker/vx_link$(XLEN).ld -Wl,--gc-sections,--defsym=_kernel_entry=_pocl_kernel_$(PROJECT)_workgroup_fast -e _kernel_entry -lm")
+CLEAN_ELF_LD = $(shell echo "-Wl,-Bstatic,-T../fpga_ld.ld -L$(VORTEX_RT_PATH)/linker/ -Wl,--gc-sections,--defsym=_kernel_entry=_pocl_kernel_$(PROJECT)_workgroup_fast -e _kernel_entry -lm")
 
 all: kernel_clean.dump
 
