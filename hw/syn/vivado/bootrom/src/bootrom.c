@@ -48,6 +48,7 @@ void mesure_user_warps(unsigned size, user_tasks_cb_t kernel_entry, void* start,
 
 
 void main() {
+    uart_init(0);
     vx_printf("ready\n");
     lab_1:
     vx_printf("\\\n");
