@@ -5,6 +5,7 @@
 #ifdef AXI_BUS
 #include "VVortex_axi.h"
 #include "VVortex_axi__Syms.h"
+#include "uart_sim.h"
 #else
 #include "VVortex.h"
 #include "VVortex__Syms.h"
@@ -20,7 +21,6 @@
 #include <mem.h>
 
 #include <VX_config.h>
-#include <vx_uart.h>
 #include <ostream>
 #include <list>
 #include <queue>
@@ -287,38 +287,6 @@ private:
     device_->m_axi_bvalid  = 0;
   }
 
-  template<unsigned int N>
-  std::array<std::tuple<bool, uint32_t, uint32_t>,N> regs_access(uint32_t base_addr, uint32_t access_size, std::array<uint32_t,N> regs, uint8_t* data) {
-        uint32_t access_addr = base_addr % MEM_BLOCK_SIZE;
-        uint32_t access_reg_min = base_addr & (~0b11);
-        uint32_t access_reg_max = (base_addr + access_size);
-        std::array<std::tuple<bool, uint32_t, uint32_t>,N> out;
-        for(unsigned int req = 0; req < N; req++){
-            bool hit = (regs[req] >= access_reg_min && regs[req] < access_reg_max);
-            uint32_t size = std::max(access_size, 0x4U);
-            out[req] = std::make_tuple(hit, size, access_addr);
-        }
-        return out;
-  }
-
-  uint32_t get_reg_from(uint8_t* data, std::tuple<bool, uint32_t, uint32_t> extracted){
-      auto size          = std::get<1>(extracted);
-      auto ofs           = std::get<2>(extracted);
-      uint32_t val = (*(uint32_t*)(&data[ofs & (~0b11)]));
-      uint32_t bits = (size == 4) ? 0xFFFFFFFF : ((1<<(size*8))-1);
-      uint32_t mask = bits << (ofs & 0b11);
-      return  val & mask;
-  }
-
-  template<typename T>
-  void set_reg_to(uint8_t* data, std::tuple<bool, uint32_t, uint32_t> extracted, T reg){
-    auto size = std::get<1>(extracted);
-    auto ofs           = std::get<2>(extracted);
-    memset(data, 0, MEM_BLOCK_SIZE);
-    memcpy(data + ofs, ((uint8_t*) &reg) + (ofs & 0b11), size);
-  }
-  bool intr_enabled = false;
-
   void eval_axi_bus(bool clk) {
     if (!clk) {
       mem_rd_rsp_ready_ = device_->m_axi_rready;
@@ -400,78 +368,51 @@ private:
         uint8_t* data = (uint8_t*)(device_->m_axi_wdata.data());
         uintptr_t access_size = pow(2, device_->m_axi_awsize);
 
-        auto regs_w = regs_access<4>(base_addr, access_size, {UART_RX_ADDR, UART_TX_ADDR, UART_CTRL_ADDR, UART_STAT_ADDR}, data);
-        if(std::get<0>(regs_w[0])) std::cout << "Unsupported write to UART RX register" << std::endl;
-        if(std::get<0>(regs_w[1])){
-            uint32_t reg_data = get_reg_from(data, regs_w[1]);
-//            std::cout << "UART TX : " << reg_data << " " << std::get<1>(regs_w[2]) << " " << std::get<2>(regs_w[2]) << std::endl;
-//            for(int c = 0; c < MEM_BLOCK_SIZE; c++)
-//                std::cout << std::hex <<  int(data[c]) << " ";
-//            std::cout << std::endl;
-            uart_fifo_t* uart_tx = (uart_fifo_t*) &reg_data;
-            std::cout << uart_tx->data;
-            std::cout.flush();
-        }
-        if(std::get<0>(regs_w[2])) {
-            uint32_t reg_data = get_reg_from(data, regs_w[2]);
-            uart_ctrl_t* uart_ctrl_data = (uart_ctrl_t*) &reg_data;
-            if(uart_ctrl_data->enable_intr)   intr_enabled=true;
-//            if(uart_ctrl_data->reset_tx_fifo) {
-//                std::cout << "UART TX flush" << std::endl;
-//                std::cout.flush();
-//            }
-//            if(uart_ctrl_data->reset_rx_fifo) {
-//                std::cout << "UART RX flush" << std::endl;
-//                std::cin.clear();
-//                std::cin.ignore(std::numeric_limits<std::streamsize>::max());
-//            }
-//            if(uart_ctrl_data->enable_intr)   std::cout << "UART enable intr" << std::endl;
-        }
-        if(std::get<0>(regs_w[3])) std::cout << "Unsupported write to UART STAT register: " << std::hex << base_addr << " +: " << access_size << std::endl;
-
-        // check console output
-        if (base_addr >= IO_COUT_ADDR 
-         && base_addr <= (IO_COUT_ADDR + (IO_COUT_SIZE-1))) {
-          for (int i = 0; i < IO_COUT_SIZE; i++) {
-            if ((byteen >> i) & 0x1) {            
-              auto& ss_buf = print_bufs_[i];
-              char c = data[i];
-              ss_buf << c;
-              if (c == '\n') {
-                std::cout << std::dec << "#" << i << ": " << ss_buf.str() << std::flush;
-                ss_buf.str("");
+        if(!process_uart_write<MEM_BLOCK_SIZE>(base_addr, access_size, data)){
+          // check console output
+          if (base_addr >= IO_COUT_ADDR
+           && base_addr <= (IO_COUT_ADDR + (IO_COUT_SIZE-1))) {
+            for (int i = 0; i < IO_COUT_SIZE; i++) {
+              if ((byteen >> i) & 0x1) {
+                auto& ss_buf = print_bufs_[i];
+                char c = data[i];
+                ss_buf << c;
+                if (c == '\n') {
+                  std::cout << std::dec << "#" << i << ": " << ss_buf.str() << std::flush;
+                  ss_buf.str("");
+                }
               }
             }
-          }   
-        } else {
-          /*
-            printf("%0ld: [sim] MEM Wr: addr=%0x, byteen=%0lx, data=", timestamp, base_addr, byteen);
+          } else {
+            /*
+              printf("%0ld: [sim] MEM Wr: addr=%0x, byteen=%0lx, data=", timestamp, base_addr, byteen);
+              for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
+                printf("%02x", data[(MEM_BLOCK_SIZE-1)-i]);
+              }
+              printf("\n");
+            */
             for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
-              printf("%02x", data[(MEM_BLOCK_SIZE-1)-i]);
+              if ((byteen >> i) & 0x1) {
+                (*ram_)[base_addr + i] = data[i];
+              }
             }
-            printf("\n");
-          */
-          for (int i = 0; i < MEM_BLOCK_SIZE; i++) {
-            if ((byteen >> i) & 0x1) {            
-              (*ram_)[base_addr + i] = data[i];
-            }
-          }  
 
-          auto mem_req = new mem_req_t();
-          mem_req->tag   = device_->m_axi_awid;
-          mem_req->addr  = device_->m_axi_awaddr;        
-          mem_req->write = true;
-          mem_req->ready = true;
-          pending_mem_reqs_.emplace_back(mem_req);
+             auto mem_req = new mem_req_t();
+            mem_req->tag   = device_->m_axi_awid;
+            mem_req->addr  = device_->m_axi_awaddr;
+            mem_req->write = true;
+            mem_req->ready = true;
+            pending_mem_reqs_.emplace_back(mem_req);
 
-          // send dram request
-          ramulator::Request dram_req( 
-            device_->m_axi_awaddr,
-            ramulator::Request::Type::WRITE,
-            0
-          );
-          dram_queue_.push(dram_req);
-        }        
+            // send dram request
+            ramulator::Request dram_req(
+              device_->m_axi_awaddr,
+              ramulator::Request::Type::WRITE,
+              0
+            );
+            dram_queue_.push(dram_req);
+          }
+        }
       } else {
         // process reads
         auto mem_req = new mem_req_t();
@@ -481,34 +422,8 @@ private:
         mem_req->addr = device_->m_axi_araddr;
 
         uintptr_t access_size = pow(2, device_->m_axi_arsize);
-        bool bypass_ram_access = false;
-        auto regs_r = regs_access<4>(mem_req->addr, access_size, {UART_RX_ADDR, UART_TX_ADDR, UART_CTRL_ADDR, UART_STAT_ADDR}, nullptr);
-        if(std::get<0>(regs_r[0])){
-            //std::cout << "UART RX read" << std::endl;
-            uart_fifo_t uart_rx;
-            uart_rx.data = (std::cin.rdbuf()->in_avail() != -1) ? std::cin.rdbuf()->sbumpc() : 0 ;
-            set_reg_to(mem_req->block.data(), regs_r[0], uart_rx);
-            bypass_ram_access = true;
-        }
-        if(std::get<0>(regs_r[1])) std::cout << "Unsupported read to UART TX register" << std::endl;
-        if(std::get<0>(regs_r[2])){
-            //std::cout << "UART CTRL READ" << std::endl;
-            set_reg_to(mem_req->block.data(), regs_r[2], 0x00U);
-            bypass_ram_access = true;
-        }
-        if(std::get<0>(regs_r[3])){
-            //std::cout << "UART STAT READ" << std::endl;
-            uart_status_t uart_stat;
-            uart_stat.intr_enabled = intr_enabled;
-            uart_stat.rx_fifo_valid = (std::cin.rdbuf()->in_avail() != -1);
-            uart_stat.tx_fifo_full = 0;
-            uart_stat.tx_fifo_empty = 1;
-            //std::cout << uart_stat.tx_fifo_full << std::endl;
-            set_reg_to(mem_req->block.data(), regs_r[3], uart_stat);
-            bypass_ram_access = true;
-        }
 
-        if(bypass_ram_access){
+        if(process_uart_read<MEM_BLOCK_SIZE>(mem_req->addr, access_size, mem_req->block.data())){
             mem_req->ready = true;
         }else{
             // data_read
