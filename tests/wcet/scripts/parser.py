@@ -124,9 +124,9 @@ def print_pipeline(curr_time, stage_occupancy, last_fe, instrs: IntelHex):
     header = format_stage(new_fetchs, 1, print_addr(header_size), str(curr_time))
     process_stage = lambda s: format_stage(stage_occupancy[s], pipeline_conf[s],
                                            print_instr(instrs, i_size),
-                                           start_chr=' ' + s.split()[-1] + ('+'
+                                           start_chr=s + ('+'
                                            if len(stage_occupancy[s]) > pipeline_conf[s] else " "))
-    print(header + ''.join(map(process_stage, tracked_stages)))
+    print(header + ' '.join(map(process_stage, tracked_stages)))
 
 
 def analyze(filename, instrs: IntelHex):
