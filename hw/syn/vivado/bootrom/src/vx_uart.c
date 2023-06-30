@@ -1,10 +1,10 @@
 #include <vx_uart.h>
 
-void write_reg(uintptr_t reg, void* data){
+void __attribute__ ((noinline)) write_reg(uintptr_t reg, void* data){
     *(volatile uint32_t*) reg = *(uint32_t*) data;
 }
 
-void read_reg(uintptr_t reg, void* data){
+void __attribute__ ((noinline)) read_reg(uintptr_t reg, void* data){
     *(volatile uint32_t*) data = *(uint32_t*) reg;
 }
 

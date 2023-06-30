@@ -44,6 +44,8 @@ void mesure_user_warps(unsigned size, user_tasks_cb_t kernel_entry, void* start,
     launch_tasks();
     stop_timeit();
     vx_printf("Completed in %llu cycles\n", read_time_it());
+    vx_printf("Started at %llu\n", read_start_time());
+    vx_printf("Ended at %llu\n", read_end_time());
 }
 
 

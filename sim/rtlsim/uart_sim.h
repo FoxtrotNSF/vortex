@@ -1,5 +1,10 @@
 #pragma once
 #include <cstdint>
+#include <array>
+#include <cstring>
+#include <tuple>
+#include <iostream>
+#include <limits>
 
 #define UART_ADDR 0xFF000000
 #define DATA_BITS   8
@@ -32,11 +37,6 @@ typedef struct __attribute__((packed)) {
     char data;
     unsigned reserved : 24;
 } uart_fifo_t;
-
-#include <array>
-#include <cstring>
-#include <tuple>
-#include <iostream>
 
 bool intr_enabled = false;
 
