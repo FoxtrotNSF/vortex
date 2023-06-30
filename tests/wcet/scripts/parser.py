@@ -3,13 +3,11 @@ import argparse
 
 from intelhex import IntelHex
 from elftools.elf.elffile import ELFFile
-from pyriscv_disas import rv_disas
 from pyriscv_disas.riscv_disas import *
 from functools import reduce
 
 # Définition de la regex pour extraire les informations d'une instruction
 instr_regex = re.compile(r'(\d+):\s+(\S+):\s+wid=(\d+),\s+PC=([0-9a-fA-F]+)(?:,\s+ex=(\w+))?')
-asm_regex = re.compile(r'0x[0-9a-fA-F]{8}:\s+0x[0-9a-fA-F]{8}\s+(\w+)')
 
 LOG = "Info"
 FE = "Fetch"
@@ -23,7 +21,7 @@ func_units.pop("FPU")  # we don't care for now
 tracked_stages = [FE, IS] + list(func_units.keys()) + [C]
 
 
-pipeline_conf = {FE: 3, IS: 7, C: 2} | func_units
+pipeline_conf = {FE: 1, IS: 7, C: 2} | func_units
 i_size = 11
 
 
@@ -36,11 +34,11 @@ def rename_ex(stage) -> str:
     return ''
 
 
-def to_size(final_size, input):
+def to_size(final_size, input: str) -> tuple[str, int]:
     if final_size < len(input):
         return input[:final_size], 0
     sz, pair = divmod((final_size - len(input)), 2)
-    return (" " * (sz) + input + " " * (sz + pair))[:final_size], sz
+    return (" " * sz + input + " " * (sz + pair))[:final_size], sz
 
 
 def inv_intersection(lst1, lst2):  # returns all lst1 that are not in lst2
@@ -64,15 +62,16 @@ def extract_instrs(elf_files: list[str]):
     return hex_data
 
 
-def get_instr_at(addr: int, hex_data: IntelHex, buffer_size: int):
+def get_instr_at(addr: int, hex_data: IntelHex, buffer_size: int) -> str:
     instr = int.from_bytes(hex_data.gets(addr, 4), "little")
-    decd_inst = rv_disas(PC=addr, arch=rv32).disassemble(instr)
-    instr_match = asm_regex.search(decd_inst.format())
-    if not instr_match:
-        print("Match failed")
-        return "ERR"
-    match = instr_match.groups()[0]
-    return match
+    dec = rv_decode()
+    dec.pc = addr
+    dec.inst = instr
+    decode_inst_opcode(dec, rv32)
+    decode_inst_operands(dec)
+    decompress_inst_rv32(dec)
+    decode_inst_lift_pseudo(dec)
+    return to_size(buffer_size, get_opcode_data(dec.op).name)[0]
 
 
 def get_instr_bg(pc):
@@ -105,24 +104,24 @@ def print_addr(slot_size):
     def process(i):
         pc, _ = i
         instr_bg = get_instr_bg(pc)
-        return colour(to_size(slot_size, hex(pc))[0], bg=instr_bg)
+        return colour(to_size(slot_size, '%#010x' % pc)[0], bg=instr_bg)
 
     return process
 
 
-def format_stage(stage_occ, nb_inst_max, process_func, empty_str='', start_chr=''):
+def format_stage(stage_occ, nb_inst_max, instr_size, process_func, empty_str='', start_chr=''):
     nb_instrs = min(len(stage_occ), nb_inst_max)
     inst_rem = nb_inst_max - nb_instrs
     curr_stage_print = ''.join(map(process_func, stage_occ[-nb_inst_max:][::-1]))
-    return start_chr + curr_stage_print + colour(to_size(inst_rem * i_size, empty_str)[0])
+    return start_chr + curr_stage_print + colour(to_size(inst_rem * instr_size, empty_str)[0])
 
 
 def print_pipeline(curr_time, stage_occupancy, last_fe, instrs: IntelHex):
     s1 = ''
-    header_size = 11
+    header_size = 10
     new_fetchs = inv_intersection(stage_occupancy[FE], last_fe)
-    header = format_stage(new_fetchs, 1, print_addr(header_size), str(curr_time))
-    process_stage = lambda s: format_stage(stage_occupancy[s], pipeline_conf[s],
+    header = format_stage(new_fetchs, 1, header_size, print_addr(header_size), str(curr_time)) + ' '
+    process_stage = lambda s: format_stage(stage_occupancy[s], pipeline_conf[s], i_size,
                                            print_instr(instrs, i_size),
                                            start_chr=s + ('+'
                                            if len(stage_occupancy[s]) > pipeline_conf[s] else " "))
@@ -132,17 +131,22 @@ def print_pipeline(curr_time, stage_occupancy, last_fe, instrs: IntelHex):
 def analyze(filename, instrs: IntelHex):
     # Initialisation de la liste des états du pipeline
     pipeline_states = {s: [] for s in tracked_stages}
+    cst_time_ofs = 16
     last_time = None
     last_fe = []
+    started = False
     with open(filename, 'r') as f:
         for line in f:
+            if not started:
+                started = line.startswith("Running")
+                continue
             instr_match = instr_regex.search(line)
             if instr_match:
                 matches = instr_match.groups()
                 nb_matches = instr_match.lastindex
                 if nb_matches < 4:
                     continue
-                instr_time = int(matches[0]) // 2
+                instr_time = int(matches[0]) // 2 - cst_time_ofs
                 instr_stage = rename_stage(matches[1])
                 instr_wid = int(matches[2])
                 instr_pc = int(matches[3], 16)
@@ -179,7 +183,8 @@ def analyze(filename, instrs: IntelHex):
                     if LOG not in pipeline_states.keys():
                         pipeline_states[LOG] = []
                     pipeline_states[LOG].append(line)
-                pipeline_states[instr_stage].append((instr_pc, instr_wid))
+                if instr_stage in tracked_stages:
+                    pipeline_states[instr_stage].append((instr_pc, instr_wid))
 
 
 if __name__ == "__main__":
